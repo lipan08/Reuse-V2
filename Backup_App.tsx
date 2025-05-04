@@ -1,12 +1,4 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
-
-import React from 'react';
-import type {PropsWithChildren} from 'react';
+import React, { useEffect } from 'react';
 import {
   ScrollView,
   StatusBar,
@@ -24,30 +16,29 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+import {
+  BannerAd,
+  BannerAdSize,
+  TestIds,
+  AppOpenAd,
+  AdEventType,
+} from 'react-native-google-mobile-ads';
 
-function Section({children, title}: SectionProps): React.JSX.Element {
+const adUnitIdAppOpen = __DEV__ ? TestIds.APP_OPEN : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy';
+const adUnitId = __DEV__ ? TestIds.ADAPTIVE_BANNER : 'ca-app-pub-xxxxxxxxxxxxx/yyyyyyyyyyyyyy';
+
+const appOpenAd = AppOpenAd.createForAdRequest(adUnitIdAppOpen, {
+  keywords: ['education', 'shipping', 'travel'],
+});
+
+function Section({ children, title }: { children: React.ReactNode; title: string }) {
   const isDarkMode = useColorScheme() === 'dark';
   return (
     <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
+      <Text style={[styles.sectionTitle, { color: isDarkMode ? Colors.white : Colors.black }]}>
         {title}
       </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
+      <Text style={[styles.sectionDescription, { color: isDarkMode ? Colors.light : Colors.dark }]}>
         {children}
       </Text>
     </View>
@@ -56,20 +47,28 @@ function Section({children, title}: SectionProps): React.JSX.Element {
 
 function App(): React.JSX.Element {
   const isDarkMode = useColorScheme() === 'dark';
-
   const backgroundStyle = {
     backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
   };
 
-  /*
-   * To keep the template simple and small we're adding padding to prevent view
-   * from rendering under the System UI.
-   * For bigger apps the recommendation is to use `react-native-safe-area-context`:
-   * https://github.com/AppAndFlow/react-native-safe-area-context
-   *
-   * You can read more about it here:
-   * https://github.com/react-native-community/discussions-and-proposals/discussions/827
-   */
+  useEffect(() => {
+    const loadListener = appOpenAd.addAdEventListener(AdEventType.LOADED, () => {
+      console.log('App Open Ad loaded');
+      appOpenAd.show();
+    });
+
+    const errorListener = appOpenAd.addAdEventListener(AdEventType.ERROR, error => {
+      console.log('App Open Ad failed to load:', error);
+    });
+
+    appOpenAd.load();
+
+    return () => {
+      loadListener();
+      errorListener();
+    };
+  }, []);
+
   const safePadding = '5%';
 
   return (
@@ -78,10 +77,9 @@ function App(): React.JSX.Element {
         barStyle={isDarkMode ? 'light-content' : 'dark-content'}
         backgroundColor={backgroundStyle.backgroundColor}
       />
-      <ScrollView
-        style={backgroundStyle}>
-        <View style={{paddingRight: safePadding}}>
-          <Header/>
+      <ScrollView style={backgroundStyle}>
+        <View style={{ paddingRight: safePadding }}>
+          <Header />
         </View>
         <View
           style={{
@@ -89,6 +87,7 @@ function App(): React.JSX.Element {
             paddingHorizontal: safePadding,
             paddingBottom: safePadding,
           }}>
+          <BannerAd unitId={adUnitId} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} />
           <Section title="Step One">
             Edit <Text style={styles.highlight}>App.tsx</Text> to change this
             screen and then come back to see your edits.

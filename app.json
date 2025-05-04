@@ -1,4 +1,9 @@
 {
   "name": "ReuseApp",
-  "displayName": "ReuseApp"
+  "displayName": "ReuseApp",
+  "orientation": "portrait",
+  "icon": "./assets/recycle.png",
+  "react-native-google-mobile-ads": {
+    "android_app_id": "ca-app-pub-9242328705068667~5943445449"
+  }
 }
