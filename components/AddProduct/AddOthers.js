@@ -1,55 +1,97 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, TouchableOpacity, Alert, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
-import { useNavigation } from '@react-navigation/native'; // Import useNavigation
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../../assets/css/AddProductForm.styles.js';
 
-const AddOthers = ({ route }) => {
-  const { category, subcategory, product } = route.params; // Get product for editing
-  // const navigation = useNavigation();
+const AddOthers = ({ route, navigation }) => {
+  const { subcategory, product } = route.params;
   const [formData, setFormData] = useState({
     adTitle: '',
     description: '',
     amount: '',
     images: [],
+    deletedImages: []
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!product); // Show loading only if editing
 
+  // Fetch product details if editing
   useEffect(() => {
-    if (product) {
-      // Populate form fields with existing product data
-      setFormData({
-        id: product.id,
-        adTitle: product.title ?? '',
-        description: product.post_details.description ?? '',
-        amount: product.post_details.amount ?? '',
-        images: product.images || [], // Set existing images
-      });
-    }
+    const fetchProductDetails = async () => {
+      if (!product) return;
+
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
+        const response = await fetch(apiURL, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const productData = data.data;
+
+          // Initialize form data with API response
+          setFormData({
+            id: productData.id,
+            adTitle: productData.title || '',
+            description: productData.post_details?.description || '',
+            amount: productData.post_details?.amount?.toString() || '',
+            images: productData.images?.map((url, index) => ({
+              id: index, // Use a unique identifier for existing images
+              uri: url,
+              isNew: false
+            })) || [],
+            deletedImages: []
+          });
+        } else {
+          console.error('Failed to fetch product details');
+        }
+      } catch (error) {
+        console.error('Error fetching product details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductDetails();
   }, [product]);
 
   const handleChange = (name, value) => {
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
     try {
-      const response = await submitForm(formData, subcategory); // Call the API service
-      if (response && response.success) { // Check if the response indicates success
-        console.log('Form submitted successfully', response);
-        // navigation.navigate('MyAdsPage'); // Redirect to MyAdsPage
-      } else {
-        console.error('Validation error:', response.message || 'Something went wrong!');
+      const response = await submitForm(formData, subcategory);
+
+      if (response.success) {
+        navigation.goBack();
       }
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error('Submission error:', error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <Text>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <AlertNotificationRoot>
@@ -58,7 +100,9 @@ const AddOthers = ({ route }) => {
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          <Text style={styles.formHeader}>Add/Edit: {subcategory.name}</Text>
+          <Text style={styles.formHeader}>
+            {product ? 'Edit' : 'Create'} {subcategory.name}
+          </Text>
 
           {/* Title Field */}
           <Text style={styles.label}>Title *</Text>
@@ -66,7 +110,7 @@ const AddOthers = ({ route }) => {
             style={styles.input}
             placeholder="Enter Title"
             value={formData.adTitle}
-            onChangeText={(value) => handleChange('adTitle', value)}
+            onChangeText={v => handleChange('adTitle', v)}
           />
 
           {/* Description Field */}
@@ -76,7 +120,7 @@ const AddOthers = ({ route }) => {
             placeholder="Enter Description"
             value={formData.description}
             multiline
-            onChangeText={(value) => handleChange('description', value)}
+            onChangeText={v => handleChange('description', v)}
           />
 
           {/* Amount Field */}
@@ -86,7 +130,7 @@ const AddOthers = ({ route }) => {
             placeholder="Enter Amount"
             keyboardType="numeric"
             value={formData.amount}
-            onChangeText={(value) => handleChange('amount', value)}
+            onChangeText={v => handleChange('amount', v)}
           />
 
           {/* Image Picker */}
@@ -94,13 +138,21 @@ const AddOthers = ({ route }) => {
             formData={formData}
             setFormData={setFormData}
           />
-          {/* Display Selected Images */}
         </ScrollView>
 
-        {/* Fixed Submit Button */}
+        {/* Submit Button */}
         <View style={styles.stickyButton}>
-          <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-            <Text style={styles.submitButtonText}>{product ? "Update" : "Submit"}</Text>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.disabledButton
+            ]}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Processing...' : (product ? "Update" : "Submit")}
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

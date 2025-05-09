@@ -18,19 +18,34 @@ const ImagePickerComponent = ({ formData, setFormData }) => {
             console.log('User cancelled image picker');
         } else if (result.errorMessage) {
             console.error('ImagePicker Error:', result.errorMessage);
-        } else if (result.assets && result.assets.length > 0) {
-            setFormData({
-                ...formData,
-                images: [...formData.images, ...result.assets.map((asset) => asset.uri)],
-            });
+        } else if (result.assets?.length > 0) {
+            const newImages = result.assets.map(asset => ({
+                uri: asset.uri,
+                isNew: true // Mark new images
+            }));
+
+            setFormData(prev => ({
+                ...prev,
+                images: [...prev.images, ...newImages]
+            }));
         }
     };
 
-    const handleImageRemove = (uriToRemove) => {
-        setFormData({
-            ...formData,
-            images: formData.images.filter(uri => uri !== uriToRemove),
-        });
+    const handleImageRemove = (image) => {
+        if (image.isNew) {
+            // Remove new images directly
+            setFormData(prev => ({
+                ...prev,
+                images: prev.images.filter(img => img.uri !== image.uri)
+            }));
+        } else {
+            // Track deleted existing images
+            setFormData(prev => ({
+                ...prev,
+                images: prev.images.filter(img => img.uri !== image.uri),
+                deletedImages: [...prev.deletedImages, image.uri]
+            }));
+        }
     };
 
     return (
@@ -42,16 +57,20 @@ const ImagePickerComponent = ({ formData, setFormData }) => {
             </TouchableOpacity>
 
             <View style={styles.imagesContainer}>
-                {formData.images.map((imageUri, index) => (
+                {formData.images.map((image, index) => (
                     <View key={index} style={styles.imageWrapper}>
-                        <Image source={{ uri: imageUri }} style={styles.image} />
+                        <Image source={{ uri: image.uri || image }} style={styles.image} />
                         <TouchableOpacity
                             style={styles.removeButton}
-                            onPress={() => handleImageRemove(imageUri)}
+                            onPress={() => handleImageRemove(image)}
                         >
-                            {/* Fixed: Properly wrapped in Text component */}
                             <Text style={styles.removeButtonText}>×</Text>
                         </TouchableOpacity>
+                        {!image.isNew && (
+                            <View style={styles.existingBadge}>
+                                <Text style={styles.existingBadgeText}>Existing</Text>
+                            </View>
+                        )}
                     </View>
                 ))}
             </View>

@@ -36,6 +36,7 @@ const MyAdsPage = ({ navigation }) => {
         },
       });
       const jsonResponse = await response.json();
+      console.log(jsonResponse);
       setProducts(jsonResponse.data || []);
     } catch (error) {
       console.error("Failed to load products", error);
