@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, TouchableOpacity, Alert, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { submitForm } from '../../service/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -8,10 +7,10 @@ import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
 import styles from '../../assets/css/AddProductForm.styles.js';
 
-const AddMotorcycles = ({ route }) => {
+const AddMotorcycles = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
-  const [brands, setBrands] = useState([]);
   const currentYear = new Date().getFullYear();
+  const [brands, setBrands] = useState([]);
   const [formData, setFormData] = useState({
     brand: '',
     adTitle: '',
@@ -20,39 +19,60 @@ const AddMotorcycles = ({ route }) => {
     description: '',
     amount: '',
     images: [],
+    deletedImages: [],
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
 
+  // Fetch product details if editing
   useEffect(() => {
-    if (product) {
-      // Populate form fields with existing product data
-      setFormData({
-        id: product.id,
-        brand: product.post_details.brand ?? '',
-        year: product.post_details.year ?? '',
-        km_driven: product.post_details.km_driven ?? '',
-        adTitle: product.title ?? '',
-        description: product.post_details.description ?? '',
-        amount: product.post_details.amount ?? '',
-        images: product.images || [], // Set existing images
-      });
-    }
+    const fetchProductDetails = async () => {
+      if (!product) return;
+
+      setIsLoading(true); // Show loader immediately
+
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
+        const response = await fetch(apiURL, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const productData = data.data;
+
+          // Initialize form data with API response
+          setFormData({
+            id: productData.id,
+            brand: productData.post_details?.brand || '',
+            year: productData.post_details?.year || currentYear,
+            km_driven: productData.post_details?.km_driven || '',
+            adTitle: productData.title || '',
+            description: productData.post_details?.description || '',
+            amount: productData.post_details?.amount?.toString() || '',
+            images: productData.images?.map((url, index) => ({
+              id: index,
+              uri: url,
+              isNew: false,
+            })) || [],
+            deletedImages: [],
+          });
+        } else {
+          console.error('Failed to fetch product details');
+        }
+      } catch (error) {
+        console.error('Error fetching product details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductDetails();
   }, [product]);
 
-  const handleChange = (name, value) => {
-    setFormData({
-      ...formData,
-      [name]: value,
-    });
-  };
-
-  const generateYears = () => {
-    const years = [];
-    for (let year = currentYear; year >= 1900; year--) {
-      years.push(year.toString());
-    }
-    return years;
-  };
-
+  // Fetch motorcycle brands
   useEffect(() => {
     const getMotorcycleBrand = async () => {
       const token = await AsyncStorage.getItem('authToken');
@@ -77,15 +97,46 @@ const AddMotorcycles = ({ route }) => {
     getMotorcycleBrand();
   }, []);
 
-  const handleSubmit = async () => {
-    submitForm(formData, subcategory) // Use the centralized function
-      .then((response) => {
-        console.log('Form submitted successfully', response);
-      })
-      .catch((error) => {
-        console.error('Error submitting form', error);
-      });
+  const handleChange = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
+
+  const generateYears = () => {
+    const years = [];
+    for (let year = currentYear; year >= 1900; year--) {
+      years.push(year.toString());
+    }
+    return years;
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const response = await submitForm(formData, subcategory);
+
+      if (response.success) {
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#007BFF" />
+        <Text style={styles.loaderText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <AlertNotificationRoot>
@@ -94,7 +145,7 @@ const AddMotorcycles = ({ route }) => {
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          <Text style={styles.formHeader}>Add Motorcycles</Text>
+          <Text style={styles.formHeader}>{product ? 'Edit' : 'Add'} Motorcycles</Text>
 
           {/* Brand Selection */}
           <Text style={styles.label}>Brand *</Text>
@@ -112,8 +163,8 @@ const AddMotorcycles = ({ route }) => {
           {/* Year Dropdown */}
           <Text style={styles.label}>Year *</Text>
           <Picker
-            selectedValue={formData.year} // Tracks the selected value
-            onValueChange={(value) => handleChange('year', value)} // Updates the selected value
+            selectedValue={formData.year}
+            onValueChange={(value) => handleChange('year', value)}
             style={styles.picker}
           >
             {generateYears().map((year) => (
@@ -164,13 +215,21 @@ const AddMotorcycles = ({ route }) => {
             formData={formData}
             setFormData={setFormData}
           />
-          {/* Display Selected Images */}
         </ScrollView>
 
-        {/* Fixed Submit Button */}
+        {/* Submit Button */}
         <View style={styles.stickyButton}>
-          <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-            <Text style={styles.submitButtonText}>{product ? "Update" : "Submit"}</Text>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.disabledButton,
+            ]}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Processing...' : product ? 'Update' : 'Submit'}
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

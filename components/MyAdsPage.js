@@ -1,52 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, Modal, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, Modal, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
 import BottomNavBar from './BottomNavBar';
-import Icon from 'react-native-vector-icons/FontAwesome'; // Import the icon library
+import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ALERT_TYPE, Dialog } from 'react-native-alert-notification';
-
-import {
-  BannerAd,
-  BannerAdSize,
-  TestIds,
-  AppOpenAd,
-  AdEventType,
-} from 'react-native-google-mobile-ads';
-
-const adUnitId = __DEV__ ? TestIds.ADAPTIVE_BANNER : process.env.G_BANNER_AD_UNIT_ID;
 
 const MyAdsPage = ({ navigation }) => {
   const [products, setProducts] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isPopupVisible, setPopupVisible] = useState(false);
-  const [isDeleteConfirmVisible, setDeleteConfirmVisible] = useState(false); // State for delete confirmation modal
+  const [isDeleteConfirmVisible, setDeleteConfirmVisible] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMorePages, setHasMorePages] = useState(true);
 
   useEffect(() => {
-    fetchProducts();
+    fetchProducts(1, true); // Fetch the first page on component mount
   }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page = 1, isRefreshing = false) => {
+    if (isLoading) return; // Prevent multiple simultaneous requests
+    setIsLoading(true);
+    if (isRefreshing) setIsRefreshing(true);
+
     const token = await AsyncStorage.getItem('authToken');
     try {
-      const response = await fetch(`${process.env.BASE_URL}/my-post`, {
+      const response = await fetch(`${process.env.BASE_URL}/my-post?page=${page}`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
       });
-      const jsonResponse = await response.json();
-      console.log(jsonResponse);
-      setProducts(jsonResponse.data || []);
+
+      if (response.ok) {
+        const jsonResponse = await response.json();
+        const newProducts = jsonResponse.data || [];
+        const nextPage = jsonResponse.links.next !== null;
+
+        setProducts(prevProducts => (isRefreshing ? newProducts : [...prevProducts, ...newProducts]));
+        setCurrentPage(page);
+        setHasMorePages(nextPage);
+      } else {
+        console.error('Failed to fetch products');
+      }
     } catch (error) {
-      console.error("Failed to load products", error);
+      console.error('Error fetching products:', error);
       Dialog.show({
         type: ALERT_TYPE.ERROR,
         title: 'Error',
         textBody: 'Failed to load products.',
         button: 'Try again',
-        onPressButton: fetchProducts,
+        onPressButton: () => fetchProducts(page),
       });
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -60,6 +70,7 @@ const MyAdsPage = ({ navigation }) => {
           'Content-Type': 'application/json',
         },
       });
+
       if (response.ok) {
         setProducts(products.filter(item => item.id !== selectedProduct.id));
         Dialog.show({
@@ -72,7 +83,7 @@ const MyAdsPage = ({ navigation }) => {
         throw new Error('Failed to delete the post');
       }
     } catch (error) {
-      console.error("Delete failed", error);
+      console.error('Delete failed:', error);
       Dialog.show({
         type: ALERT_TYPE.ERROR,
         title: 'Error',
@@ -102,6 +113,33 @@ const MyAdsPage = ({ navigation }) => {
   const confirmDelete = () => {
     hideDeleteConfirmModal();
     deleteProduct();
+  };
+
+  const renderProductItem = ({ item }) => (
+    <TouchableOpacity style={styles.productItem} onPress={() => showPopup(item)}>
+      <Image source={{ uri: item.images[0] }} style={styles.productImage} />
+      <View style={styles.productDetails}>
+        <Text style={styles.productName}>{item.title}</Text>
+        <Text style={styles.productDesc}>{item.post_details.description}</Text>
+        <Text style={styles.price}>Price: ${item.post_details.amount}</Text>
+      </View>
+      <Icon name="angle-right" size={24} color="#007BFF" style={styles.arrowIcon} />
+    </TouchableOpacity>
+  );
+
+  const renderFooter = () => {
+    if (!isLoading || isRefreshing) return null;
+    return <ActivityIndicator size="large" color="#007BFF" style={styles.loadingIndicator} />;
+  };
+
+  const handleLoadMore = () => {
+    if (hasMorePages && !isLoading) {
+      fetchProducts(currentPage + 1);
+    }
+  };
+
+  const handleRefresh = () => {
+    fetchProducts(1, true);
   };
 
   const categoryComponentMap = {
@@ -180,29 +218,18 @@ const MyAdsPage = ({ navigation }) => {
   const getComponentForCategory = (guard_name) => {
     return categoryComponentMap[guard_name] || 'AddOthers';
   };
-
-  const renderProductItem = ({ item }) => (
-    <TouchableOpacity style={styles.productItem} onPress={() => showPopup(item)}>
-      <Image source={{ uri: item.images[0] }} style={styles.productImage} />
-      <View style={styles.productDetails}>
-        <Text style={styles.productName}>{item.title}</Text>
-        <Text style={styles.productDesc}>{item.post_details.description}</Text>
-        <Text style={styles.price}>Price: ${item.post_details.amount}</Text>
-      </View>
-      <Icon name="angle-right" size={24} color="#007BFF" style={styles.arrowIcon} />
-    </TouchableOpacity>
-  );
-
   return (
     <View style={styles.container}>
-
-      {/* <BannerAd unitId={adUnitId} size={BannerAdSize.ANCHORED_ADAPTIVE_BANNER} /> */}
-
       <FlatList
         data={products}
         renderItem={renderProductItem}
         keyExtractor={(item) => item.id.toString()}
         contentContainerStyle={styles.productList}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        refreshing={isRefreshing}
+        onRefresh={handleRefresh}
       />
       <BottomNavBar navigation={navigation} />
 
@@ -304,7 +331,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    // padding: 10,
   },
   productList: {
     paddingBottom: 60,
@@ -338,18 +364,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'green',
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#e4f0e6', // Make sure this color is visible
-    marginVertical: 7, // Adjust margin for spacing
-    width: '40%', // Ensure it takes the full width of the parent container
-  },
   arrowIcon: {
     marginLeft: 10,
   },
+  loadingIndicator: {
+    marginVertical: 20,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Slightly more opaque background
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
   },

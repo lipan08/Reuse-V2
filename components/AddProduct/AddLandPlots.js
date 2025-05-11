@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, TouchableOpacity, Alert, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
-import { Picker } from '@react-native-picker/picker';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../../assets/css/AddProductForm.styles.js';
 
-const AddLandPlots = ({ route }) => {
+const AddLandPlots = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
   const [formData, setFormData] = useState({
     listedBy: 'Owner',
@@ -20,63 +19,94 @@ const AddLandPlots = ({ route }) => {
     amount: '',
     facing: 'East',
     images: [],
+    deletedImages: [],
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
 
+  // Fetch product details if editing
   useEffect(() => {
-    if (product) {
-      // Populate form fields with existing product data
-      setFormData({
-        id: product.id,
-        listedBy: product.post_details.listed_by ?? '',
-        plotArea: product.post_details.carpet_area ?? '',
-        length: product.post_details.length ?? '',
-        breadth: product.post_details.breadth ?? '',
-        projectName: product.post_details.project_name ?? '',
-        facing: product.post_details.facing ?? '',
-        adTitle: product.title ?? '',
-        description: product.post_details.description ?? '',
-        images: product.images || [], // Set existing images
-      });
-    }
+    const fetchProductDetails = async () => {
+      if (!product) return;
+
+      setIsLoading(true); // Show loader immediately
+
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
+        const response = await fetch(apiURL, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const productData = data.data;
+          console.log(productData);
+          // Initialize form data with API response
+          setFormData({
+            id: productData.id,
+            listedBy: productData.post_details?.listed_by || 'Owner',
+            plotArea: productData.post_details?.carpet_area ? productData.post_details.carpet_area.toString() : '',
+            length: productData.post_details?.length ? productData.post_details.length.toString() : '',
+            breadth: productData.post_details?.breadth ? productData.post_details.breadth.toString() : '',
+            projectName: productData.post_details?.project_name || '',
+            facing: productData.post_details?.facing || 'East',
+            adTitle: productData.title || '',
+            description: productData.post_details?.description || '',
+            amount: productData.post_details?.amount?.toString() || '',
+            images: productData.images?.map((url, index) => ({
+              id: index,
+              uri: url,
+              isNew: false,
+            })) || [],
+            deletedImages: [],
+          });
+        } else {
+          console.error('Failed to fetch product details');
+        }
+      } catch (error) {
+        console.error('Error fetching product details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductDetails();
   }, [product]);
 
   const handleChange = (name, value) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
-  };
-
-  const handleImagePick = async () => {
-    const options = {
-      mediaType: 'photo',
-      selectionLimit: 0, // Allow multiple image selection
-      quality: 1,
-    };
-
-    const result = await launchImageLibrary(options);
-
-    if (result.didCancel) {
-      console.log('User cancelled image picker');
-    } else if (result.errorMessage) {
-      console.error('ImagePicker Error:', result.errorMessage);
-    } else if (result.assets && result.assets.length > 0) {
-      setFormData({
-        ...formData,
-        images: [...formData.images, ...result.assets.map((asset) => asset.uri)], // Add selected images to the array
-      });
-    }
+    }));
   };
 
   const handleSubmit = async () => {
-    submitForm(formData, subcategory) // Use the centralized function
-      .then((response) => {
-        console.log('Form submitted successfully', response);
-      })
-      .catch((error) => {
-        console.error('Error submitting form', error);
-      });
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const response = await submitForm(formData, subcategory);
+
+      if (response.success) {
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#007BFF" />
+        <Text style={styles.loaderText}>Loading product details...</Text>
+      </View>
+    );
+  }
 
   return (
     <AlertNotificationRoot>
@@ -85,7 +115,8 @@ const AddLandPlots = ({ route }) => {
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          <Text style={styles.formHeader}>Add Properties</Text>
+          <Text style={styles.formHeader}>{product ? 'Edit' : 'Add'} Land/Plots</Text>
+
           {/* Listed By */}
           <Text style={styles.label}>Listed By *</Text>
           <View style={styles.optionContainer}>
@@ -191,13 +222,21 @@ const AddLandPlots = ({ route }) => {
             formData={formData}
             setFormData={setFormData}
           />
-          {/* Display Selected Images */}
         </ScrollView>
 
-        {/* Fixed Submit Button */}
+        {/* Submit Button */}
         <View style={styles.stickyButton}>
-          <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-            <Text style={styles.submitButtonText}>{product ? "Update" : "Submit"}</Text>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.disabledButton,
+            ]}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Processing...' : product ? 'Update' : 'Submit'}
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

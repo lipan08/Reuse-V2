@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, TouchableOpacity, Alert, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
-import { Picker } from '@react-native-picker/picker';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../../assets/css/AddProductForm.styles.js';
 
-const AddHousesApartments = ({ route }) => {
+const AddHousesApartments = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
   const [formData, setFormData] = useState({
     propertyType: 'Apartments',
@@ -28,80 +27,129 @@ const AddHousesApartments = ({ route }) => {
     description: '',
     amount: '',
     images: [],
+    deletedImages: [],
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
 
+  // Fetch product details if editing
   useEffect(() => {
-    if (product) {
-      // Populate form fields with existing product data
-      setFormData({
-        id: product.id,
-        adTitle: product.title ?? '',
-        description: product.post_details.description ?? '',
-        amount: product.post_details.amount ?? '',
-        propertyType: product.post_details.property_type ?? '',
-        bedroom: product.post_details.bedrooms.toString() ?? '',
-        bathroom: product.post_details.bathrooms ?? '',
-        furnishing: product.post_details.furnishing ?? '',
-        constructionStatus: product.post_details.construction_status ?? '',
-        listedBy: product.post_details.listed_by ?? '',
-        carParking: product.post_details.car_parking.toString() ?? '',
-        facing: product.post_details.facing ?? '',
-        superBuiltupArea: product.post_details.super_builtup_area.toString() ?? '',
-        carpetArea: product.post_details.carpet_area.toString() ?? '',
-        maintenance: product.post_details.maintenance ?? '',
-        totalFloors: product.post_details.total_floors ?? '',
-        floorNo: product.post_details.floor_no ?? '',
-        projectName: product.post_details.project_name ?? '',
-        images: product.images || [], // Set existing images
-      });
-    }
+    const fetchProductDetails = async () => {
+      if (!product) return;
+
+      setIsLoading(true); // Show loader immediately
+
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
+        const response = await fetch(apiURL, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const productData = data.data;
+
+          // Initialize form data with API response
+          setFormData({
+            id: productData.id,
+            propertyType: productData.post_details?.property_type || 'Apartments',
+            bedroom: productData.post_details?.bedrooms?.toString() || '2',
+            bathroom: productData.post_details?.bathrooms?.toString() || '1',
+            furnishing: productData.post_details?.furnishing || 'Unfurnished',
+            constructionStatus: productData.post_details?.construction_status || 'Ready to Move',
+            listedBy: productData.post_details?.listed_by || 'Owner',
+            carParking: productData.post_details?.car_parking?.toString() || '1',
+            facing: productData.post_details?.facing || 'East',
+            superBuiltupArea: productData.post_details?.super_builtup_area?.toString() || '',
+            carpetArea: productData.post_details?.carpet_area?.toString() || '',
+            maintenance: productData.post_details?.maintenance?.toString() || '',
+            totalFloors: productData.post_details?.total_floors?.toString() || '',
+            floorNo: productData.post_details?.floor_no?.toString() || '',
+            projectName: productData.post_details?.project_name || '',
+            adTitle: productData.title || '',
+            description: productData.post_details?.description || '',
+            amount: productData.post_details?.amount?.toString() || '',
+            images: productData.images?.map((url, index) => ({
+              id: index,
+              uri: url,
+              isNew: false,
+            })) || [],
+            deletedImages: [],
+          });
+        } else {
+          console.error('Failed to fetch product details');
+        }
+      } catch (error) {
+        console.error('Error fetching product details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductDetails();
   }, [product]);
 
   const handleChange = (name, value) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
-  const handleOptionSelection = (name, value) => {
-    setFormData({
-      ...formData,
+  const handleSelection = (name, value) => {
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
   };
 
   const handleSubmit = async () => {
-    submitForm(formData, subcategory) // Use the centralized function
-      .then((response) => {
-        console.log('Form submitted successfully', response);
-      })
-      .catch((error) => {
-        console.error('Error submitting form', error);
-      });
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const response = await submitForm(formData, subcategory);
+
+      if (response.success) {
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#007BFF" />
+        <Text style={styles.loaderText}>Loading property details...</Text>
+      </View>
+    );
+  }
 
   return (
     <AlertNotificationRoot>
-
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          <Text style={styles.formHeader}>Add Properties</Text>
-          {/* Type Selection */}
-          <Text style={styles.label}>Type *</Text>
+          <Text style={styles.formHeader}>{product ? 'Edit' : 'Add'} Houses/Apartments</Text>
+
+          {/* Property Type Selection */}
+          <Text style={styles.label}>Property Type *</Text>
           <View style={styles.optionContainer}>
-            {['Apartments', 'Builder Floors', 'Farm Houses', 'Houses & Villas'].map((option) => (
+            {['Apartments', 'Builder Floors', 'Farm Houses', 'Houses & Villas'].map((type) => (
               <TouchableOpacity
-                key={option}
-                style={[styles.optionButton, formData.propertyType === option && styles.selectedOption]}
-                onPress={() => handleOptionSelection('propertyType', option)}
+                key={type}
+                style={[styles.optionButton, formData.propertyType === type && styles.selectedOption]}
+                onPress={() => handleSelection('propertyType', type)}
               >
-                <Text style={formData.propertyType === option ? styles.selectedText : styles.optionText}>
-                  {option}
-                </Text>
+                <Text style={formData.propertyType === type ? styles.selectedText : styles.optionText}>{type}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -113,7 +161,7 @@ const AddHousesApartments = ({ route }) => {
               <TouchableOpacity
                 key={bedroom}
                 style={[styles.optionButton, formData.bedroom === bedroom && styles.selectedOption]}
-                onPress={() => handleOptionSelection('bedroom', bedroom)}
+                onPress={() => handleSelection('bedroom', bedroom)}
               >
                 <Text style={formData.bedroom === bedroom ? styles.selectedText : styles.optionText}>{bedroom}</Text>
               </TouchableOpacity>
@@ -127,30 +175,27 @@ const AddHousesApartments = ({ route }) => {
               <TouchableOpacity
                 key={bathroom}
                 style={[styles.optionButton, formData.bathroom === bathroom && styles.selectedOption]}
-                onPress={() => handleOptionSelection('bathroom', bathroom)}
+                onPress={() => handleSelection('bathroom', bathroom)}
               >
                 <Text style={formData.bathroom === bathroom ? styles.selectedText : styles.optionText}>{bathroom}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Facing */}
-          <View style={styles.container}>
-            <Text style={styles.label}>Facing *</Text>
-            <View style={styles.optionContainer}>
-              {['East', 'North', 'South', 'West', 'North-East', 'North-West', 'South-East', 'South-West'].map((facingOption) => (
-                <TouchableOpacity
-                  key={facingOption}
-                  style={[styles.optionButton, formData.facing === facingOption && styles.selectedOption]}
-                  onPress={() => handleChange('facing', facingOption)}
-                >
-                  <Text style={formData.facing === facingOption ? styles.selectedText : styles.optionText}>
-                    {facingOption}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          {/* Facing Selection */}
+          <Text style={styles.label}>Facing *</Text>
+          <View style={styles.optionContainer}>
+            {['East', 'North', 'South', 'West', 'North-East', 'North-West', 'South-East', 'South-West'].map((facing) => (
+              <TouchableOpacity
+                key={facing}
+                style={[styles.optionButton, formData.facing === facing && styles.selectedOption]}
+                onPress={() => handleSelection('facing', facing)}
+              >
+                <Text style={formData.facing === facing ? styles.selectedText : styles.optionText}>{facing}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
+
 
           {/* Furnishing Selection */}
           <Text style={styles.label}>Furnishing *</Text>
@@ -269,12 +314,21 @@ const AddHousesApartments = ({ route }) => {
             formData={formData}
             setFormData={setFormData}
           />
-          {/* Display Selected Images */}
         </ScrollView>
-        {/* Fixed Submit Button */}
+
+        {/* Submit Button */}
         <View style={styles.stickyButton}>
-          <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-            <Text style={styles.submitButtonText}>{product ? "Update" : "Submit"}</Text>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.disabledButton,
+            ]}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Processing...' : product ? 'Update' : 'Submit'}
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

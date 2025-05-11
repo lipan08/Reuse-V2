@@ -71,4 +71,15 @@ export default StyleSheet.create({
         color: '#007BFF',
         textAlign: 'center',
     },
+    loaderContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#FFFFFF',
+    },
+    loaderText: {
+        marginTop: 10,
+        fontSize: 16,
+        color: '#333',
+    },
 });

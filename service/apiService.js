@@ -80,7 +80,7 @@ export const submitForm = async (formData, subcategory) => {
                     : 'Post created successfully!',
                 button: 'close',
             });
-            return { success: true, data: responseData };
+            // return { success: true, data: responseData };
         } else {
             Dialog.show({
                 type: ALERT_TYPE.WARNING,
@@ -88,8 +88,9 @@ export const submitForm = async (formData, subcategory) => {
                 textBody: responseData.message || 'Something went wrong!',
                 button: 'close',
             });
-            return { success: false, errors: responseData.errors };
+            // return { success: false, errors: responseData.errors };
         }
+        return responseData;
     } catch (error) {
         console.error('API Error:', error);
         Dialog.show({

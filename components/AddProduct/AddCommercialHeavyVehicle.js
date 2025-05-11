@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, TouchableOpacity, Alert, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
-import { Picker } from '@react-native-picker/picker'; // Corrected import
-import { launchImageLibrary } from 'react-native-image-picker';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { Picker } from '@react-native-picker/picker';
 import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../../assets/css/AddProductForm.styles.js';
 
-const AddCommercialHeavyVehicle = ({ route }) => {
+const AddCommercialHeavyVehicle = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
   const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     brand: '',
-    year: currentYear.toString(), // Changed to string
+    year: currentYear.toString(),
     fuelType: 'Diesel',
     condition: 'Fair',
     owners: '1st',
@@ -22,34 +22,89 @@ const AddCommercialHeavyVehicle = ({ route }) => {
     contact_name: '',
     contact_phone: '',
     amount: '',
-    kmDriven: '', // Added missing field
+    kmDriven: '',
     images: [],
+    deletedImages: [],
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
 
+  // Fetch product details if editing
   useEffect(() => {
-    if (product) {
-      setFormData({
-        id: product.id,
-        brand: product.post_details.brand ?? '',
-        year: product.post_details.year?.toString() ?? currentYear.toString(),
-        fuelType: product.post_details.fuel_type ?? 'Diesel',
-        condition: product.post_details.condition ?? 'Fair',
-        owners: product.post_details.owner ?? '1st',
-        listedBy: product.post_details.listed_by ?? 'Owner',
-        adTitle: product.title ?? '',
-        description: product.post_details.description ?? '',
-        amount: product.post_details.amount ?? '',
-        kmDriven: product.post_details.km_driven ?? '', // Populate kmDriven
-        images: product.images || [],
-      });
-    }
+    const fetchProductDetails = async () => {
+      if (!product) return;
+
+      setIsLoading(true); // Show loader immediately
+
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
+        const response = await fetch(apiURL, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const productData = data.data;
+
+          // Initialize form data with API response
+          setFormData({
+            id: productData.id,
+            brand: productData.post_details?.brand || '',
+            year: productData.post_details?.year?.toString() || currentYear.toString(),
+            fuelType: productData.post_details?.fuel_type || 'Diesel',
+            condition: productData.post_details?.condition || 'Fair',
+            owners: productData.post_details?.owner || '1st',
+            listedBy: productData.post_details?.listed_by || 'Owner',
+            adTitle: productData.title || '',
+            description: productData.post_details?.description || '',
+            contact_name: productData.post_details?.contact_name || '',
+            contact_phone: productData.post_details?.contact_phone || '',
+            amount: productData.post_details?.amount?.toString() || '',
+            kmDriven: productData.post_details?.km_driven?.toString() || '',
+            images: productData.images?.map((url, index) => ({
+              id: index,
+              uri: url,
+              isNew: false,
+            })) || [],
+            deletedImages: [],
+          });
+        } else {
+          console.error('Failed to fetch product details');
+        }
+      } catch (error) {
+        console.error('Error fetching product details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductDetails();
   }, [product]);
 
   const handleChange = (name, value) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const response = await submitForm(formData, subcategory);
+
+      if (response.success) {
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const generateYears = () => {
@@ -60,55 +115,14 @@ const AddCommercialHeavyVehicle = ({ route }) => {
     return years;
   };
 
-  const handleFuelSelection = (type) => {
-    setFormData({ ...formData, fuelType: type });
-  };
-
-  const handleConditionSelection = (type) => {
-    setFormData({ ...formData, condition: type });
-  };
-
-  const handleTransmissionSelection = (type) => {
-    setFormData({ ...formData, transmission: type });
-  };
-
-  const handleOwnersSelection = (type) => {
-    setFormData({ ...formData, owners: type });
-  };
-
-  const vehicleBrands = [
-    'Tata Motors Limited',
-    'Mahindra & Mahindra Limited',
-    'Eicher Motors Limited',
-    'Ashok Leyland Limited',
-    'Force Motors Limited',
-    'SML ISUZU Limited',
-    'Hindustan Motors',
-    "Daimler India Commercial Vehicles' BharatBenz",
-    'Volvo Trucks',
-    'Asia Motorworks',
-    'Scania Commercial Vehicles India Pvt. Ltd.',
-    'MAN Trucks India Pvt. Ltd.',
-    'Iveco',
-    'Bharat Earth Movers Limited (BEML)',
-    'JCB India Limited',
-    'Komatsu India Private Limited',
-    'Caterpillar India',
-    'John Deere India Private Limited',
-    'Case New Holland Construction Equipment India Private Limited',
-    'L&T Construction Equipment Limited',
-    'Others',
-  ];
-
-  const handleSubmit = async () => {
-    submitForm(formData, subcategory)  // Use the centralized function
-      .then((response) => {
-        console.log('Form submitted successfully', response);
-      })
-      .catch((error) => {
-        console.error('Error submitting form', error);
-      });
-  };
+  if (isLoading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#007BFF" />
+        <Text style={styles.loaderText}>Loading product details...</Text>
+      </View>
+    );
+  }
 
   return (
     <AlertNotificationRoot>
@@ -117,21 +131,42 @@ const AddCommercialHeavyVehicle = ({ route }) => {
         style={styles.container}
       >
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
-          <Text style={styles.formHeader}>Add: {subcategory.name}</Text>
+          <Text style={styles.formHeader}>{product ? 'Edit' : 'Add'} {subcategory.name}</Text>
 
           {/* Brand Selection */}
-          <Text style={styles.label}>Type *</Text>
+          <Text style={styles.label}>Brand *</Text>
           <Picker
             selectedValue={formData.brand}
             onValueChange={(value) => handleChange('brand', value)}
             style={styles.picker}
           >
             <Picker.Item label="Select Brand" value="" />
-            {vehicleBrands.map((brand, index) => (
+            {[
+              'Tata Motors Limited',
+              'Mahindra & Mahindra Limited',
+              'Eicher Motors Limited',
+              'Ashok Leyland Limited',
+              'Force Motors Limited',
+              'SML ISUZU Limited',
+              'Hindustan Motors',
+              "Daimler India Commercial Vehicles' BharatBenz",
+              'Volvo Trucks',
+              'Asia Motorworks',
+              'Scania Commercial Vehicles India Pvt. Ltd.',
+              'MAN Trucks India Pvt. Ltd.',
+              'Iveco',
+              'Bharat Earth Movers Limited (BEML)',
+              'JCB India Limited',
+              'Komatsu India Private Limited',
+              'Caterpillar India',
+              'John Deere India Private Limited',
+              'Case New Holland Construction Equipment India Private Limited',
+              'L&T Construction Equipment Limited',
+              'Others',
+            ].map((brand, index) => (
               <Picker.Item key={index} label={brand} value={brand} />
             ))}
           </Picker>
-
 
           {/* Condition Selection */}
           <Text style={styles.label}>Condition *</Text>
@@ -269,13 +304,21 @@ const AddCommercialHeavyVehicle = ({ route }) => {
             formData={formData}
             setFormData={setFormData}
           />
-          {/* Display Selected Images */}
         </ScrollView>
 
-        {/* Fixed Submit Button */}
+        {/* Submit Button */}
         <View style={styles.stickyButton}>
-          <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-            <Text style={styles.submitButtonText}>{product ? "Update" : "Submit"}</Text>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.disabledButton,
+            ]}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Processing...' : product ? 'Update' : 'Submit'}
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

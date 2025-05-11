@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Button, TouchableOpacity, Alert, ScrollView, StyleSheet, Image, KeyboardAvoidingView, Platform } from 'react-native';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../../assets/css/AddProductForm.styles.js';
 
-
-const AddCarForm = ({ route }) => {
+const AddCarForm = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
   const currentYear = new Date().getFullYear();
   const [formData, setFormData] = useState({
     brand: '',
-    year: currentYear, // Default to the current year
+    year: currentYear.toString(),
     fuelType: 'Petrol',
     transmission: 'Automatic',
     kmDriven: '',
@@ -22,32 +21,84 @@ const AddCarForm = ({ route }) => {
     description: '',
     amount: '',
     images: [],
+    deletedImages: [],
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
 
+  // Fetch product details if editing
   useEffect(() => {
-    if (product) {
-      // Populate form fields with existing product data
-      setFormData({
-        id: product.id,
-        adTitle: product.title ?? '',
-        description: product.post_details.description ?? '',
-        amount: product.post_details.amount ?? '',
-        kmDriven: product.post_details.km_driven.toString() ?? '',
-        brand: product.post_details.brand ?? '',
-        year: product.post_details.year ?? currentYear,
-        transmission: product.post_details.transmission ?? '',
-        owners: product.post_details.no_of_owner ?? '',
-        fuelType: product.post_details.fuel ?? '',
-        images: product.images || [],
-      });
-    }
+    const fetchProductDetails = async () => {
+      if (!product) return;
+
+      setIsLoading(true); // Show loader immediately
+
+      try {
+        const token = await AsyncStorage.getItem('authToken');
+        const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
+        const response = await fetch(apiURL, {
+          method: 'GET',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const productData = data.data;
+
+          // Initialize form data with API response
+          setFormData({
+            id: productData.id,
+            brand: productData.post_details?.brand || '',
+            year: productData.post_details?.year?.toString() || currentYear.toString(),
+            fuelType: productData.post_details?.fuel || 'Petrol',
+            transmission: productData.post_details?.transmission || 'Automatic',
+            kmDriven: productData.post_details?.km_driven?.toString() || '',
+            owners: productData.post_details?.no_of_owner || '1st',
+            adTitle: productData.title || '',
+            description: productData.post_details?.description || '',
+            amount: productData.post_details?.amount?.toString() || '',
+            images: productData.images?.map((url, index) => ({
+              id: index,
+              uri: url,
+              isNew: false,
+            })) || [],
+            deletedImages: [],
+          });
+        } else {
+          console.error('Failed to fetch product details');
+        }
+      } catch (error) {
+        console.error('Error fetching product details:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductDetails();
   }, [product]);
 
   const handleChange = (name, value) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [name]: value,
-    });
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const response = await submitForm(formData, subcategory);
+
+      if (response.success) {
+        navigation.goBack();
+      }
+    } catch (error) {
+      console.error('Submission error:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const generateYears = () => {
@@ -58,15 +109,14 @@ const AddCarForm = ({ route }) => {
     return years;
   };
 
-  const handleSubmit = async () => {
-    submitForm(formData, subcategory)  // Use the centralized function
-      .then((response) => {
-        console.log('Form submitted successfully', response);
-      })
-      .catch((error) => {
-        console.error('Error submitting form', error);
-      });
-  };
+  if (isLoading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#007BFF" />
+        <Text style={styles.loaderText}>Loading product details...</Text>
+      </View>
+    );
+  }
 
   return (
     <AlertNotificationRoot>
@@ -76,11 +126,11 @@ const AddCarForm = ({ route }) => {
       >
         <ScrollView contentContainerStyle={styles.scrollViewContent}>
           <Text style={styles.formHeader}>
-            Add Product - {category.name ?? subcategory.name}
+            {product ? 'Edit' : 'Add'} {category.name ?? subcategory.name}
           </Text>
 
           {/* Brand Field */}
-          <Text style={styles.label}>Brand:</Text>
+          <Text style={styles.label}>Brand *</Text>
           <Picker
             selectedValue={formData.brand}
             onValueChange={(value) => handleChange('brand', value)}
@@ -160,16 +210,12 @@ const AddCarForm = ({ route }) => {
           {/* Year Dropdown */}
           <Text style={styles.label}>Year *</Text>
           <Picker
-            selectedValue={formData.year} // Tracks the selected value
-            onValueChange={(value) => handleChange('year', value)} // Updates the selected value
+            selectedValue={formData.year}
+            onValueChange={(value) => handleChange('year', value)}
             style={styles.picker}
           >
             {generateYears().map((year) => (
-              <Picker.Item
-                key={year}
-                label={year}
-                value={year}
-              />
+              <Picker.Item key={year} label={year} value={year} />
             ))}
           </Picker>
 
@@ -253,18 +299,27 @@ const AddCarForm = ({ route }) => {
             value={formData.amount}
             onChangeText={(value) => handleChange('amount', value)}
           />
+
           {/* Image Picker */}
           <ImagePickerComponent
             formData={formData}
             setFormData={setFormData}
           />
-          {/* Display Selected Images */}
         </ScrollView>
 
-        {/* Fixed Submit Button */}
+        {/* Submit Button */}
         <View style={styles.stickyButton}>
-          <TouchableOpacity onPress={handleSubmit} style={styles.submitButton}>
-            <Text style={styles.submitButtonText}>{product ? "Update" : "Submit"}</Text>
+          <TouchableOpacity
+            onPress={handleSubmit}
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.disabledButton,
+            ]}
+            disabled={isSubmitting}
+          >
+            <Text style={styles.submitButtonText}>
+              {isSubmitting ? 'Processing...' : product ? 'Update' : 'Submit'}
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
