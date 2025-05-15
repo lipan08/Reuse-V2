@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image, TextInput, FlatList, ActivityIndicator, DeviceEventEmitter,
-  Animated, RefreshControl, TouchableWithoutFeedback, Keyboard
+  Animated, RefreshControl, TouchableWithoutFeedback, Keyboard, Dimensions
 } from 'react-native';
 import Swiper from 'react-native-swiper';
 import CategoryMenu from './CategoryMenu';
@@ -17,6 +17,12 @@ import {
   AppOpenAd,
   AdEventType,
 } from 'react-native-google-mobile-ads';
+
+const { width, height } = Dimensions.get('window');
+const scale = width / 375;
+const verticalScale = height / 812;
+const normalize = (size) => Math.round(scale * size);
+const normalizeVertical = (size) => Math.round(verticalScale * size);
 
 const adUnitIdAppOpen = __DEV__ ? TestIds.APP_OPEN : process.env.G_APP_OPEN_AD_UNIT_ID;
 const adUnitId = __DEV__ ? TestIds.ADAPTIVE_BANNER : process.env.G_BANNER_AD_UNIT_ID;
@@ -333,7 +339,7 @@ const Home = () => {
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-              <Icon name="close" size={20} color="#888" />
+              <Icon name="close" size={normalize(13)} color="#888" />
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -342,10 +348,10 @@ const Home = () => {
               initialFilters: { ...activeFilters, search, category: selectedCategory }
             })}
           >
-            <Icon name="filter-list" size={24} color="#fff" />
+            <Icon name="filter-list" size={normalize(18)} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.searchButton} onPress={handleSearchPress}>
-            <Icon name="search" size={24} color="#fff" />
+            <Icon name="search" size={normalize(18)} color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -394,88 +400,101 @@ const Home = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF', padding: 10 },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   bannerAdContainer: {
-    marginHorizontal: -10, // Negate the container's horizontal padding
-    marginBottom: 10, // Optional margin below the banner
+    marginHorizontal: -normalize(8),
+    marginBottom: normalize(8),
   },
   bannerAd: {
-    alignSelf: 'center', // Center the ad horizontally
+    alignSelf: 'center',
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f0f0f0',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    marginVertical: 5,
+    borderRadius: normalize(8),
+    paddingHorizontal: normalize(8),
+    paddingVertical: normalizeVertical(3),
+    marginTop: normalizeVertical(10),      // Add or adjust this for top margin
+    marginBottom: normalizeVertical(10),   // Add or adjust this for bottom margin
+    marginHorizontal: normalize(2),
   },
   searchInput: {
     flex: 1,
-    height: 40,
-    paddingHorizontal: 10,
-    fontSize: 16,
+    height: normalizeVertical(38), // Slightly taller for all screens
+    paddingHorizontal: normalize(12), // More horizontal padding
+    fontSize: normalize(14), // Slightly larger font
+    backgroundColor: '#fff',
+    borderRadius: normalize(6),
+    color: '#222',
+    // Ensure placeholder is not cut off
+    includeFontPadding: false,
+    paddingVertical: 0, // Remove vertical padding for better alignment
   },
-  clearButton: { position: 'absolute', right: 105, padding: 5 },
+  clearButton: { position: 'absolute', right: normalize(85), padding: normalize(4) },
   searchButton: {
     backgroundColor: '#007bff',
-    padding: 10,
-    borderRadius: 5,
+    padding: normalize(8),
+    borderRadius: normalize(4),
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 5,
+    marginLeft: normalize(4),
   },
   filterButton: {
     backgroundColor: '#007bff',
-    padding: 10,
-    borderRadius: 5,
+    padding: normalize(8),
+    borderRadius: normalize(4),
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 5,
+    marginLeft: normalize(4),
   },
   recentSearchOverlay: {
     position: 'absolute',
-    top: 70,
-    left: 10,
-    right: 10,
+    top: normalizeVertical(55),
+    left: normalize(8),
+    right: normalize(8),
     backgroundColor: '#FFF',
-    borderRadius: 5,
-    padding: 10,
+    borderRadius: normalize(4),
+    padding: normalize(8),
     opacity: 0.95,
     zIndex: 1,
   },
-  recentSearchItem: {
-    paddingVertical: 8,
-    fontSize: 16,
-    color: '#007bff',
-  },
-  productList: { paddingHorizontal: 5, paddingBottom: 60 },
+  productList: { paddingHorizontal: normalize(4), paddingBottom: normalizeVertical(48) },
   productItem: {
     flex: 1,
-    margin: 5,
-    borderRadius: 5,
-    padding: 10,
+    margin: normalize(4),
+    borderRadius: normalize(4),
+    padding: normalize(8),
     alignItems: 'center',
     backgroundColor: '#F9F9F9',
     shadowColor: '#565656',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 10,
+    shadowOffset: { width: 0, height: normalizeVertical(3) },
+    shadowOpacity: 0.18,
+    shadowRadius: normalize(6),
+    elevation: 8,
   },
-  imageContainer: { height: 120, width: '100%', borderRadius: 5, overflow: 'hidden', marginBottom: 8 },
+  imageContainer: { height: normalizeVertical(90), width: '100%', borderRadius: normalize(4), overflow: 'hidden', marginBottom: normalize(6) },
   productImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  productName: { fontWeight: 'bold', textAlign: 'center' },
-  details: { fontSize: 16, marginTop: 5, marginBottom: 10 },
-  price: { fontSize: 16, fontWeight: 'bold' },
-  loaderTop: { marginBottom: 10 },
-  loaderBottom: { marginTop: 10 },
-  noProductsText: { fontSize: 16, textAlign: 'center', marginTop: 20 },
+  productName: { fontWeight: 'bold', textAlign: 'center', fontSize: normalize(14) },
+  details: { fontSize: normalize(12), marginTop: normalizeVertical(3), marginBottom: normalizeVertical(6) },
+  price: { fontSize: normalize(13), fontWeight: 'bold' },
+  noProductsText: { fontSize: normalize(11), textAlign: 'center', marginTop: normalizeVertical(12) },
+  recentSearchItem: {
+    paddingVertical: normalizeVertical(5),
+    fontSize: normalize(11),
+    color: '#007bff',
+  },
+  filterBadgeText: {
+    color: '#fff',
+    marginRight: normalize(5),
+    fontSize: normalize(9),
+  },
+  loaderTop: { marginBottom: normalize(8) },
+  loaderBottom: { marginTop: normalize(8) },
   filterBadgeContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    padding: 8,
+    padding: normalize(6),
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -484,15 +503,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#007bff',
-    borderRadius: 16,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    margin: 4,
-  },
-  filterBadgeText: {
-    color: '#fff',
-    marginRight: 8,
-    fontSize: 14,
+    borderRadius: normalize(12),
+    paddingVertical: normalizeVertical(3),
+    paddingHorizontal: normalize(8),
+    margin: normalize(3),
   },
 });
 

@@ -13,6 +13,14 @@ import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const { width, height } = Dimensions.get('window');
+const scale = width / 375;
+const verticalScale = height / 812;
+const normalize = (size) => Math.round(scale * size);
+const normalizeVertical = (size) => Math.round(verticalScale * size);
+
+
+
 const Header = () => {
    const navigation = useNavigation();
    const [address, setAddress] = useState("Set Location");
@@ -87,11 +95,11 @@ const styles = StyleSheet.create({
    headerContainer: {
       backgroundColor: '#007BFF',
       height: Platform.select({
-         ios: 90,
-         android: 100,
-         default: 70
+         ios: normalizeVertical(90),
+         android: normalizeVertical(90),
+         default: normalizeVertical(70)
       }),
-      paddingHorizontal: 16,
+      paddingHorizontal: normalize(12),
    },
    contentContainer: {
       flex: 1,
@@ -99,9 +107,9 @@ const styles = StyleSheet.create({
       justifyContent: 'space-between',
       alignItems: 'center',
       marginTop: Platform.select({
-         ios: 4,
-         android: 8,
-         default: 8
+         ios: normalizeVertical(4),
+         android: normalizeVertical(8),
+         default: normalizeVertical(8)
       }),
    },
    logoContainer: {
@@ -110,48 +118,49 @@ const styles = StyleSheet.create({
       flex: 1,
    },
    logo: {
-      width: 40,
-      height: 40,
+      width: normalize(32),
+      height: normalize(32),
       resizeMode: 'contain',
-      marginRight: 10,
+      marginRight: normalize(8),
    },
    titleContainer: {
       flexDirection: 'column',
       justifyContent: 'center',
    },
    appName: {
-      fontSize: 18,
+      fontSize: normalize(16),
       fontWeight: 'bold',
       color: '#FFFFFF',
       includeFontPadding: false,
    },
    appSubName: {
-      fontSize: 12,
+      fontSize: normalize(12),
       color: '#FFFFFF',
       includeFontPadding: false,
-      marginTop: -2,
+      marginTop: -normalizeVertical(2),
    },
    rightIcons: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'flex-end',
       flex: 1,
-      maxWidth: Dimensions.get('window').width * 0.6,
+      maxWidth: width * 0.6,
    },
    locationContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginLeft: 10,
+      marginLeft: normalize(8),
    },
    addressText: {
       color: '#FFFFFF',
-      fontSize: 14,
-      maxWidth: Dimensions.get('window').width * 0.5,
+      fontSize: normalize(12),
+      maxWidth: width * 0.5,
       includeFontPadding: false,
    },
    locationIcon: {
-      marginLeft: 6,
-      marginTop: 2,
+      marginLeft: normalize(4),
+      marginTop: normalizeVertical(1),
+      fontSize: normalize(19), // Ionicons will use this if size prop is not set
    },
 });
 

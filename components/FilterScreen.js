@@ -1,12 +1,18 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
     View, Text, TextInput, TouchableOpacity, StyleSheet,
-    KeyboardAvoidingView, FlatList, Platform, ActivityIndicator
+    KeyboardAvoidingView, FlatList, Platform, ActivityIndicator, Dimensions
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import { useRoute, useNavigation } from '@react-navigation/native';
+
+const { width, height } = Dimensions.get('window');
+const scale = width / 375;
+const verticalScale = height / 812;
+const normalize = (size) => Math.round(scale * size);
+const normalizeVertical = (size) => Math.round(verticalScale * size);
 
 const FilterScreen = ({ navigation }) => {
     const route = useRoute();
@@ -271,7 +277,7 @@ const FilterScreen = ({ navigation }) => {
                                 styles.categoryIcon,
                                 selectedCategory === category.id && { color: '#fff' },
                             ]}
-                            size={20}
+                            size={25}
                             color={category.color}
                         />
                         <Text style={[
@@ -370,20 +376,20 @@ const styles = StyleSheet.create({
         backgroundColor: '#f5f5f5'
     },
     scrollContainer: {
-        padding: 16
+        padding: normalize(10)
     },
     searchInput: {
         backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 14,
-        marginBottom: 16,
-        fontSize: 16,
+        borderRadius: normalize(8),
+        padding: normalize(10),
+        marginBottom: normalizeVertical(10),
+        fontSize: normalize(12),
         borderWidth: 1,
         borderColor: '#ddd',
         elevation: 2,
     },
     locationContainer: {
-        marginBottom: 16
+        marginBottom: normalizeVertical(10)
     },
     addressSearchContainer: {
         position: 'relative',
@@ -391,56 +397,57 @@ const styles = StyleSheet.create({
     },
     addressInput: {
         backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 14,
-        fontSize: 16,
+        borderRadius: normalize(8),
+        padding: normalize(10),
+        marginBottom: normalizeVertical(10),
+        fontSize: normalize(12),
         borderWidth: 1,
         borderColor: '#ddd',
         elevation: 2,
     },
     predictionsList: {
         position: 'absolute',
-        top: 60,
+        top: normalizeVertical(38),
         width: '100%',
-        maxHeight: 200,
+        maxHeight: normalizeVertical(100),
         backgroundColor: '#fff',
-        borderRadius: 10,
+        borderRadius: normalize(8),
         borderWidth: 1,
         borderColor: '#ddd',
         zIndex: 4,
         elevation: 5,
     },
     predictionItem: {
-        padding: 14,
+        padding: normalize(8),
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
     },
     predictionText: {
-        fontSize: 15,
+        fontSize: normalize(12),
         color: '#333',
     },
     loader: {
         position: 'absolute',
-        right: 15,
-        top: 15,
+        right: normalize(10),
+        top: normalizeVertical(10),
     },
     distanceTitle: {
-        fontSize: 17,
+        fontSize: normalize(14),
         fontWeight: '600',
-        marginBottom: 12,
+        marginBottom: normalizeVertical(8),
         color: '#2c3e50',
     },
     filterListContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginBottom: 20,
-        gap: 8,
+        marginBottom: normalizeVertical(12),
+        gap: normalize(6),
     },
     filterItem: {
         backgroundColor: '#fff',
-        borderRadius: 8,
-        paddingVertical: 12,
-        paddingHorizontal: 18,
+        borderRadius: normalize(6),
+        paddingVertical: normalizeVertical(10),
+        paddingHorizontal: normalize(12),
         borderWidth: 1,
         borderColor: '#ddd',
         elevation: 2,
@@ -450,28 +457,28 @@ const styles = StyleSheet.create({
         borderColor: '#007bff',
     },
     filterText: {
-        fontSize: 15,
+        fontSize: normalize(12),
         color: '#333'
     },
     filterTextSelected: {
         color: '#fff'
     },
     sectionTitle: {
-        fontSize: 17,
+        fontSize: normalize(14),
         fontWeight: '600',
-        marginVertical: 16,
+        marginVertical: normalizeVertical(10),
         color: '#2c3e50',
     },
     categoryListContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        marginBottom: 20,
-        gap: 8,
+        marginBottom: normalizeVertical(12),
+        gap: normalize(6),
     },
     categoryItem: {
         backgroundColor: '#fff',
-        borderRadius: 8,
-        padding: 12,
+        borderRadius: normalize(6),
+        padding: normalize(7),
         borderWidth: 1,
         borderColor: '#ddd',
         flexDirection: 'row',
@@ -483,10 +490,10 @@ const styles = StyleSheet.create({
         borderColor: '#007bff',
     },
     categoryIcon: {
-        marginRight: 8
+        marginRight: normalize(5)
     },
     categoryText: {
-        fontSize: 15,
+        fontSize: normalize(12),
         color: '#333'
     },
     categoryTextSelected: {
@@ -495,61 +502,61 @@ const styles = StyleSheet.create({
     budgetInputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
-        gap: 10,
+        marginBottom: normalizeVertical(12),
+        gap: normalize(6),
     },
     budgetInput: {
         flex: 1,
         backgroundColor: '#fff',
-        borderRadius: 10,
-        padding: 14,
-        fontSize: 16,
+        borderRadius: normalize(8),
+        padding: normalize(10),
+        fontSize: normalize(12),
         borderWidth: 1,
         borderColor: '#ddd',
         elevation: 2,
     },
     toText: {
-        fontSize: 16,
+        fontSize: normalize(12),
         color: '#666'
     },
     fixedButtonContainer: {
         position: 'absolute',
-        bottom: 20,
-        left: 16,
-        right: 16,
+        bottom: normalizeVertical(16),
+        left: normalize(10),
+        right: normalize(10),
         flexDirection: 'row',
-        gap: 12,
+        gap: normalize(8),
         zIndex: 2,
     },
     clearButton: {
         flex: 1,
         backgroundColor: '#6c757d',
-        borderRadius: 10,
-        padding: 16,
+        borderRadius: normalize(8),
+        padding: normalize(10),
         alignItems: 'center',
         elevation: 3,
     },
     clearButtonText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: normalize(12),
         fontWeight: '500',
     },
     submitButton: {
         flex: 1,
         backgroundColor: '#007bff',
-        borderRadius: 10,
-        padding: 16,
+        borderRadius: normalize(8),
+        padding: normalize(10),
         alignItems: 'center',
         elevation: 3,
     },
     submitButtonText: {
         color: '#fff',
-        fontSize: 16,
+        fontSize: normalize(12),
         fontWeight: '500',
     },
     scrollableContent: {
         flex: 1,
-        marginBottom: 90,
+        marginBottom: normalizeVertical(70),
     },
 });
 

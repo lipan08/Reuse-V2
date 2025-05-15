@@ -5,7 +5,9 @@ import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AddressAutocomplete from '../AddressAutocomplete'; // Add this import
 import styles from '../../assets/css/AddProductForm.styles.js';
+import CustomPicker from './SubComponent/CustomPicker';
 
 const AddToursTravel = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
@@ -14,19 +16,19 @@ const AddToursTravel = ({ route, navigation }) => {
     title: '',
     description: '',
     amount: '',
+    address: '', // Added address field
+    latitude: null, // Added latitude
+    longitude: null, // Added longitude
     images: [],
     deletedImages: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
+  const [isLoading, setIsLoading] = useState(!!product);
 
-  // Fetch product details if editing
   useEffect(() => {
     const fetchProductDetails = async () => {
       if (!product) return;
-
-      setIsLoading(true); // Show loader immediately
-
+      setIsLoading(true);
       try {
         const token = await AsyncStorage.getItem('authToken');
         const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
@@ -38,14 +40,15 @@ const AddToursTravel = ({ route, navigation }) => {
         if (response.ok) {
           const data = await response.json();
           const productData = data.data;
-
-          // Initialize form data with API response
           setFormData({
             id: productData.id,
             type: productData.post_details?.type || '',
             title: productData.title || '',
             description: productData.post_details?.description || '',
             amount: productData.post_details?.amount?.toString() || '',
+            address: productData.post_details?.address || '', // Initialize address
+            latitude: productData.post_details?.latitude || null, // Initialize latitude
+            longitude: productData.post_details?.longitude || null, // Initialize longitude
             images: productData.images?.map((url, index) => ({
               id: index,
               uri: url,
@@ -53,8 +56,6 @@ const AddToursTravel = ({ route, navigation }) => {
             })) || [],
             deletedImages: [],
           });
-        } else {
-          console.error('Failed to fetch product details');
         }
       } catch (error) {
         console.error('Error fetching product details:', error);
@@ -62,7 +63,6 @@ const AddToursTravel = ({ route, navigation }) => {
         setIsLoading(false);
       }
     };
-
     fetchProductDetails();
   }, [product]);
 
@@ -73,16 +73,22 @@ const AddToursTravel = ({ route, navigation }) => {
     }));
   };
 
+  const handleAddressSelect = (location) => {
+    setFormData(prev => ({
+      ...prev,
+      address: location.address,
+      latitude: location.latitude,
+      longitude: location.longitude
+    }));
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
       const response = await submitForm(formData, subcategory);
-
-      if (response.success) {
-        navigation.goBack();
-      }
+      if (response.success) navigation.goBack();
     } catch (error) {
       console.error('Submission error:', error);
     } finally {
@@ -110,19 +116,19 @@ const AddToursTravel = ({ route, navigation }) => {
 
           {/* Type Selection */}
           <Text style={styles.label}>Type *</Text>
-          <Picker
-            selectedValue={formData.type}
-            onValueChange={(value) => handleChange('type', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select Type" value="" />
-            <Picker.Item value="taxi-services" label="Taxi Services" />
-            <Picker.Item value="driver-services" label="Driver Services" />
-            <Picker.Item value="travel-agents" label="Travel Agents" />
-            <Picker.Item value="hotel" label="Hotel" />
-            <Picker.Item value="homestays" label="Homestays" />
-            <Picker.Item value="others" label="Others" />
-          </Picker>
+          <CustomPicker
+            label="Select Type"
+            value={formData.type}
+            options={[
+              { label: 'Taxi Services', value: 'taxi-services' },
+              { label: 'Driver Services', value: 'driver-services' },
+              { label: 'Travel Agents', value: 'travel-agents' },
+              { label: 'Hotel', value: 'hotel' },
+              { label: 'Homestays', value: 'homestays' },
+              { label: 'Others', value: 'others' },
+            ]}
+            onSelect={value => handleChange('type', value)}
+          />
 
           {/* Title Field */}
           <Text style={styles.label}>Title *</Text>
@@ -151,6 +157,19 @@ const AddToursTravel = ({ route, navigation }) => {
             keyboardType="numeric"
             value={formData.amount}
             onChangeText={(value) => handleChange('amount', value)}
+          />
+
+          {/* Address Field */}
+          <Text style={styles.label}>Address *</Text>
+          <AddressAutocomplete
+            initialAddress={formData.address}
+            initialLatitude={formData.latitude}
+            initialLongitude={formData.longitude}
+            onAddressSelect={handleAddressSelect}
+            styles={{
+              input: styles.input,
+              container: { marginBottom: 16 }
+            }}
           />
 
           {/* Image Picker */}

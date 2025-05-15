@@ -5,7 +5,10 @@ import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AddressAutocomplete from '../AddressAutocomplete';
 import styles from '../../assets/css/AddProductForm.styles.js';
+import CustomPicker from './SubComponent/CustomPicker';
+
 
 const AddMobileTablets = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
@@ -14,19 +17,21 @@ const AddMobileTablets = ({ route, navigation }) => {
     adTitle: '',
     description: '',
     amount: '',
+    address: '',
+    latitude: null,
+    longitude: null,
     images: [],
     deletedImages: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
+  const [isLoading, setIsLoading] = useState(!!product);
 
   // Fetch product details if editing
   useEffect(() => {
     const fetchProductDetails = async () => {
       if (!product) return;
 
-      setIsLoading(true); // Show loader immediately
-
+      setIsLoading(true);
       try {
         const token = await AsyncStorage.getItem('authToken');
         const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
@@ -38,14 +43,15 @@ const AddMobileTablets = ({ route, navigation }) => {
         if (response.ok) {
           const data = await response.json();
           const productData = data.data;
-
-          // Initialize form data with API response
           setFormData({
             id: productData.id,
             brand: productData.post_details?.brand || '',
             adTitle: productData.title || '',
             description: productData.post_details?.description || '',
             amount: productData.post_details?.amount?.toString() || '',
+            address: productData.post_details?.address || '',
+            latitude: productData.post_details?.latitude || null,
+            longitude: productData.post_details?.longitude || null,
             images: productData.images?.map((url, index) => ({
               id: index,
               uri: url,
@@ -53,8 +59,6 @@ const AddMobileTablets = ({ route, navigation }) => {
             })) || [],
             deletedImages: [],
           });
-        } else {
-          console.error('Failed to fetch product details');
         }
       } catch (error) {
         console.error('Error fetching product details:', error);
@@ -62,7 +66,6 @@ const AddMobileTablets = ({ route, navigation }) => {
         setIsLoading(false);
       }
     };
-
     fetchProductDetails();
   }, [product]);
 
@@ -73,16 +76,22 @@ const AddMobileTablets = ({ route, navigation }) => {
     }));
   };
 
+  const handleAddressSelect = (location) => {
+    setFormData(prev => ({
+      ...prev,
+      address: location.address,
+      latitude: location.latitude,
+      longitude: location.longitude
+    }));
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
       const response = await submitForm(formData, subcategory);
-
-      if (response.success) {
-        navigation.goBack();
-      }
+      if (response.success) navigation.goBack();
     } catch (error) {
       console.error('Submission error:', error);
     } finally {
@@ -110,39 +119,39 @@ const AddMobileTablets = ({ route, navigation }) => {
 
           {/* Brand Selection */}
           <Text style={styles.label}>Brand *</Text>
-          <Picker
-            selectedValue={formData.brand}
-            onValueChange={(value) => handleChange('brand', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select Brand" value="" />
-            <Picker.Item label="iPhone" value="iphone" />
-            <Picker.Item label="Samsung" value="samsung" />
-            <Picker.Item label="Xiaomi" value="xiaomi" />
-            <Picker.Item label="Vivo" value="vivo" />
-            <Picker.Item label="Oppo" value="oppo" />
-            <Picker.Item label="Realme" value="realme" />
-            <Picker.Item label="Asus" value="asus" />
-            <Picker.Item label="BlackBerry" value="blackberry" />
-            <Picker.Item label="Gionee" value="gionee" />
-            <Picker.Item label="Google Pixel" value="google-pixel" />
-            <Picker.Item label="Honor" value="honor" />
-            <Picker.Item label="HTC" value="htc" />
-            <Picker.Item label="Huawei" value="huawei" />
-            <Picker.Item label="Infinix" value="infinix" />
-            <Picker.Item label="Intex" value="intex" />
-            <Picker.Item label="Karbonn" value="karbonn" />
-            <Picker.Item label="Lava" value="lava" />
-            <Picker.Item label="Lenovo" value="lenovo" />
-            <Picker.Item label="LG" value="lg" />
-            <Picker.Item label="Micromax" value="micromax" />
-            <Picker.Item label="Motorola" value="motorola" />
-            <Picker.Item label="Nokia" value="nokia" />
-            <Picker.Item label="One Plus" value="one-plus" />
-            <Picker.Item label="Sony" value="sony" />
-            <Picker.Item label="Techno" value="techno" />
-            <Picker.Item label="Other Mobiles" value="other-mobiles" />
-          </Picker>
+          <CustomPicker
+            label="Select Brand"
+            value={formData.brand}
+            options={[
+              { label: 'iPhone', value: 'iphone' },
+              { label: 'Samsung', value: 'samsung' },
+              { label: 'Xiaomi', value: 'xiaomi' },
+              { label: 'Vivo', value: 'vivo' },
+              { label: 'Oppo', value: 'oppo' },
+              { label: 'Realme', value: 'realme' },
+              { label: 'Asus', value: 'asus' },
+              { label: 'BlackBerry', value: 'blackberry' },
+              { label: 'Gionee', value: 'gionee' },
+              { label: 'Google Pixel', value: 'google-pixel' },
+              { label: 'Honor', value: 'honor' },
+              { label: 'HTC', value: 'htc' },
+              { label: 'Huawei', value: 'huawei' },
+              { label: 'Infinix', value: 'infinix' },
+              { label: 'Intex', value: 'intex' },
+              { label: 'Karbonn', value: 'karbonn' },
+              { label: 'Lava', value: 'lava' },
+              { label: 'Lenovo', value: 'lenovo' },
+              { label: 'LG', value: 'lg' },
+              { label: 'Micromax', value: 'micromax' },
+              { label: 'Motorola', value: 'motorola' },
+              { label: 'Nokia', value: 'nokia' },
+              { label: 'One Plus', value: 'one-plus' },
+              { label: 'Sony', value: 'sony' },
+              { label: 'Techno', value: 'techno' },
+              { label: 'Other Mobiles', value: 'other-mobiles' },
+            ]}
+            onSelect={value => handleChange('brand', value)}
+          />
 
           {/* Title Field */}
           <Text style={styles.label}>Title *</Text>
@@ -171,6 +180,19 @@ const AddMobileTablets = ({ route, navigation }) => {
             keyboardType="numeric"
             value={formData.amount}
             onChangeText={(value) => handleChange('amount', value)}
+          />
+
+          {/* Address Field */}
+          <Text style={styles.label}>Address *</Text>
+          <AddressAutocomplete
+            initialAddress={formData.address}
+            initialLatitude={formData.latitude}
+            initialLongitude={formData.longitude}
+            onAddressSelect={handleAddressSelect}
+            styles={{
+              input: styles.input,
+              container: { marginBottom: 16 }
+            }}
           />
 
           {/* Image Picker */}

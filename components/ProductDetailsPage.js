@@ -9,7 +9,7 @@ import {
     ActivityIndicator,
     Linking,
     Alert,
-    Dimensions
+    Dimensions,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -294,21 +294,11 @@ const ProductDetails = () => {
                     </View>
                 </View>
 
-                {/* Location Section */}
-                <View style={styles.sectionContainer}>
-                    <Text style={styles.sectionTitle}>Location</Text>
-                    <View style={styles.locationCard}>
-                        <AddressSection
-                            address={product.address}
-                            handleMapPress={handleMapPress}
-                        />
-                    </View>
-                </View>
-
-                {/* Map */}
+                {/* Map with Address Overlay */}
                 <View style={styles.mapContainer}>
                     <MapView
                         style={styles.map}
+                        onPress={handleMapPress}
                         initialRegion={{
                             latitude: 22.6992,
                             longitude: 88.3902,
@@ -321,6 +311,12 @@ const ProductDetails = () => {
                             title="Product Location"
                         />
                     </MapView>
+                    {/* Address overlay at top left */}
+                    <View style={styles.mapAddressOverlay}>
+                        <Text style={styles.mapAddressText} numberOfLines={2} ellipsizeMode="tail">
+                            {'Agarpara, Kolkata-700109' || product.address}
+                        </Text>
+                    </View>
                 </View>
 
                 {/* Chat/Call Buttons */}

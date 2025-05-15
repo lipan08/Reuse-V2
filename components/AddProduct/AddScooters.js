@@ -5,7 +5,9 @@ import { submitForm } from '../../service/apiService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
+import AddressAutocomplete from '../AddressAutocomplete'; // Added import
 import styles from '../../assets/css/AddProductForm.styles.js';
+import CustomPicker from './SubComponent/CustomPicker';
 
 const AddScooters = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
@@ -18,19 +20,21 @@ const AddScooters = ({ route, navigation }) => {
     km_driven: '',
     description: '',
     amount: '',
+    address: '', // Added address field
+    latitude: null, // Added latitude
+    longitude: null, // Added longitude
     images: [],
     deletedImages: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
+  const [isLoading, setIsLoading] = useState(!!product);
 
   // Fetch product details if editing
   useEffect(() => {
     const fetchProductDetails = async () => {
       if (!product) return;
 
-      setIsLoading(true); // Show loader immediately
-
+      setIsLoading(true);
       try {
         const token = await AsyncStorage.getItem('authToken');
         const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
@@ -42,8 +46,6 @@ const AddScooters = ({ route, navigation }) => {
         if (response.ok) {
           const data = await response.json();
           const productData = data.data;
-
-          // Initialize form data with API response
           setFormData({
             id: productData.id,
             brand: productData.post_details?.brand || '',
@@ -52,6 +54,9 @@ const AddScooters = ({ route, navigation }) => {
             adTitle: productData.title || '',
             description: productData.post_details?.description || '',
             amount: productData.post_details?.amount?.toString() || '',
+            address: productData.post_details?.address || '', // Initialize address
+            latitude: productData.post_details?.latitude || null, // Initialize latitude
+            longitude: productData.post_details?.longitude || null, // Initialize longitude
             images: productData.images?.map((url, index) => ({
               id: index,
               uri: url,
@@ -59,8 +64,6 @@ const AddScooters = ({ route, navigation }) => {
             })) || [],
             deletedImages: [],
           });
-        } else {
-          console.error('Failed to fetch product details');
         }
       } catch (error) {
         console.error('Error fetching product details:', error);
@@ -68,7 +71,6 @@ const AddScooters = ({ route, navigation }) => {
         setIsLoading(false);
       }
     };
-
     fetchProductDetails();
   }, [product]);
 
@@ -87,14 +89,11 @@ const AddScooters = ({ route, navigation }) => {
         const responseData = await response.json();
         if (response.ok) {
           setBrands(responseData);
-        } else {
-          console.error('Failed to fetch scooter brands:', responseData);
         }
       } catch (error) {
         console.error('Error fetching scooter brands:', error);
       }
     };
-
     getScooterBrand();
   }, []);
 
@@ -105,16 +104,22 @@ const AddScooters = ({ route, navigation }) => {
     }));
   };
 
+  const handleAddressSelect = (location) => {
+    setFormData(prev => ({
+      ...prev,
+      address: location.address,
+      latitude: location.latitude,
+      longitude: location.longitude
+    }));
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
       const response = await submitForm(formData, subcategory);
-
-      if (response.success) {
-        navigation.goBack();
-      }
+      if (response.success) navigation.goBack();
     } catch (error) {
       console.error('Submission error:', error);
     } finally {
@@ -150,28 +155,21 @@ const AddScooters = ({ route, navigation }) => {
 
           {/* Brand Selection */}
           <Text style={styles.label}>Brand *</Text>
-          <Picker
-            selectedValue={formData.brand}
-            onValueChange={(value) => handleChange('brand', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select a brand" value="" />
-            {brands.map((brand) => (
-              <Picker.Item key={brand} label={brand} value={brand} />
-            ))}
-          </Picker>
+          <CustomPicker
+            label="Select a brand"
+            value={formData.brand}
+            options={brands.map(brand => ({ label: brand, value: brand }))}
+            onSelect={value => handleChange('brand', value)}
+          />
 
           {/* Year Dropdown */}
           <Text style={styles.label}>Year *</Text>
-          <Picker
-            selectedValue={formData.year}
-            onValueChange={(value) => handleChange('year', value)}
-            style={styles.picker}
-          >
-            {generateYears().map((year) => (
-              <Picker.Item key={year} label={year} value={year} />
-            ))}
-          </Picker>
+          <CustomPicker
+            label="Select Year"
+            value={formData.year}
+            options={generateYears().map(year => ({ label: year, value: year }))}
+            onSelect={value => handleChange('year', value)}
+          />
 
           {/* KM Driven Field */}
           <Text style={styles.label}>KM Driven *</Text>
@@ -210,6 +208,19 @@ const AddScooters = ({ route, navigation }) => {
             keyboardType="numeric"
             value={formData.amount}
             onChangeText={(value) => handleChange('amount', value)}
+          />
+
+          {/* Address Field */}
+          <Text style={styles.label}>Address *</Text>
+          <AddressAutocomplete
+            initialAddress={formData.address}
+            initialLatitude={formData.latitude}
+            initialLongitude={formData.longitude}
+            onAddressSelect={handleAddressSelect}
+            styles={{
+              input: styles.input,
+              container: { marginBottom: 16 }
+            }}
           />
 
           {/* Image Picker */}

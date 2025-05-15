@@ -10,12 +10,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import { ALERT_TYPE, Dialog } from 'react-native-alert-notification';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width, height } = Dimensions.get('window');
+const scale = width / 375;
+const verticalScale = height / 812;
+const normalize = (size) => Math.round(scale * size);
+const normalizeVertical = (size) => Math.round(verticalScale * size);
+
 
 const EditProfilePage = () => {
   const [userData, setUserData] = useState({
@@ -69,6 +77,7 @@ const EditProfilePage = () => {
             profileImage: profile.images?.url || '',
             bio: profile.about_me || '',
           });
+
           console.log('Profile image URL:', profile.images.url);
         } else {
           console.error('Failed to fetch profile data:', responseData.message);
@@ -151,6 +160,8 @@ const EditProfilePage = () => {
           textBody: 'Profile updated successfully!',
           button: 'close',
         });
+        await AsyncStorage.setItem('userName', `${userData.firstName} ${userData.lastName}`);
+        await AsyncStorage.setItem('userImage', userData.profileImage || '');
       } else {
         Dialog.show({
           type: ALERT_TYPE.WARNING,
@@ -304,24 +315,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollView: {
-    paddingHorizontal: 20,
-    paddingVertical: 30,
+    paddingHorizontal: normalize(14),
+    paddingVertical: normalizeVertical(18),
   },
   header: {
-    fontSize: 26,
+    fontSize: normalize(18),
     fontWeight: 'bold',
     color: '#333',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: normalizeVertical(12),
   },
   imagePicker: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+    width: normalize(80),
+    height: normalize(80),
+    borderRadius: normalize(40),
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: normalizeVertical(14),
     borderWidth: 2,
     borderColor: '#007BFF',
     overflow: 'hidden',
@@ -332,13 +343,13 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   section: {
-    marginBottom: 25,
+    marginBottom: normalizeVertical(18),
   },
   sectionHeader: {
-    fontSize: 18,
+    fontSize: normalize(13),
     fontWeight: '600',
     color: '#555',
-    marginBottom: 10,
+    marginBottom: normalizeVertical(7),
   },
   inputGroup: {
     flexDirection: 'row',
@@ -346,30 +357,30 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    height: 50,
+    height: normalizeVertical(40), // increased height
     borderColor: '#ccc',
     borderWidth: 1,
-    borderRadius: 8,
-    marginBottom: 15,
-    paddingHorizontal: 15,
-    fontSize: 16,
+    borderRadius: normalize(8),    // slightly larger radius
+    marginBottom: normalizeVertical(14), // more vertical space
+    paddingHorizontal: normalize(14),    // more horizontal padding
+    fontSize: normalize(15),      // larger font size
     backgroundColor: '#fff',
   },
   textArea: {
-    height: 100,
+    height: normalizeVertical(90), // increased height for textarea
     textAlignVertical: 'top',
   },
   saveButton: {
     backgroundColor: '#007BFF',
-    padding: 15,
-    borderRadius: 8,
+    padding: normalize(12),
+    borderRadius: normalize(6),
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 20,
+    marginHorizontal: normalize(14),
+    marginBottom: normalizeVertical(14),
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: 18,
+    fontSize: normalize(14),
     fontWeight: 'bold',
   },
   loaderContainer: {
@@ -379,8 +390,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#f4f4f4',
   },
   loaderText: {
-    marginTop: 10,
-    fontSize: 16,
+    marginTop: normalizeVertical(8),
+    fontSize: normalize(12),
     color: '#555',
   },
 });

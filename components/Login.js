@@ -149,6 +149,9 @@ const Login = () => {
             await AsyncStorage.setItem('userId', data.user.id.toString());
             await AsyncStorage.setItem('name', data.user.name);
             await AsyncStorage.setItem('phoneNo', data.user.phone_no);
+
+            await AsyncStorage.setItem('userName', data.user.name || '');
+            await AsyncStorage.setItem('userImage', data.user.images?.url || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png');
             setIsLoggedIn(true);
             navigation.navigate('Home');
          } else {

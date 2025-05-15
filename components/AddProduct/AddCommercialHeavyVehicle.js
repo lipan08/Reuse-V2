@@ -5,7 +5,10 @@ import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AddressAutocomplete from '../AddressAutocomplete';
 import styles from '../../assets/css/AddProductForm.styles.js';
+import CustomPicker from './SubComponent/CustomPicker';
+
 
 const AddCommercialHeavyVehicle = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
@@ -23,19 +26,21 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
     contact_phone: '',
     amount: '',
     kmDriven: '',
+    address: '',
+    latitude: null,
+    longitude: null,
     images: [],
     deletedImages: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
+  const [isLoading, setIsLoading] = useState(!!product);
 
   // Fetch product details if editing
   useEffect(() => {
     const fetchProductDetails = async () => {
       if (!product) return;
 
-      setIsLoading(true); // Show loader immediately
-
+      setIsLoading(true);
       try {
         const token = await AsyncStorage.getItem('authToken');
         const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
@@ -47,8 +52,6 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
         if (response.ok) {
           const data = await response.json();
           const productData = data.data;
-
-          // Initialize form data with API response
           setFormData({
             id: productData.id,
             brand: productData.post_details?.brand || '',
@@ -63,6 +66,9 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
             contact_phone: productData.post_details?.contact_phone || '',
             amount: productData.post_details?.amount?.toString() || '',
             kmDriven: productData.post_details?.km_driven?.toString() || '',
+            address: productData.post_details?.address || '',
+            latitude: productData.post_details?.latitude || null,
+            longitude: productData.post_details?.longitude || null,
             images: productData.images?.map((url, index) => ({
               id: index,
               uri: url,
@@ -70,8 +76,6 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
             })) || [],
             deletedImages: [],
           });
-        } else {
-          console.error('Failed to fetch product details');
         }
       } catch (error) {
         console.error('Error fetching product details:', error);
@@ -79,7 +83,6 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
         setIsLoading(false);
       }
     };
-
     fetchProductDetails();
   }, [product]);
 
@@ -90,16 +93,22 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
     }));
   };
 
+  const handleAddressSelect = (location) => {
+    setFormData(prev => ({
+      ...prev,
+      address: location.address,
+      latitude: location.latitude,
+      longitude: location.longitude
+    }));
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
       const response = await submitForm(formData, subcategory);
-
-      if (response.success) {
-        navigation.goBack();
-      }
+      if (response.success) navigation.goBack();
     } catch (error) {
       console.error('Submission error:', error);
     } finally {
@@ -123,6 +132,29 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
       </View>
     );
   }
+  const vehicleBrands = [
+    'Tata Motors Limited',
+    'Mahindra & Mahindra Limited',
+    'Eicher Motors Limited',
+    'Ashok Leyland Limited',
+    'Force Motors Limited',
+    'SML ISUZU Limited',
+    'Hindustan Motors',
+    "Daimler India Commercial Vehicles' BharatBenz",
+    'Volvo Trucks',
+    'Asia Motorworks',
+    'Scania Commercial Vehicles India Pvt. Ltd.',
+    'MAN Trucks India Pvt. Ltd.',
+    'Iveco',
+    'Bharat Earth Movers Limited (BEML)',
+    'JCB India Limited',
+    'Komatsu India Private Limited',
+    'Caterpillar India',
+    'John Deere India Private Limited',
+    'Case New Holland Construction Equipment India Private Limited',
+    'L&T Construction Equipment Limited',
+    'Others',
+  ];
 
   return (
     <AlertNotificationRoot>
@@ -135,38 +167,12 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
 
           {/* Brand Selection */}
           <Text style={styles.label}>Brand *</Text>
-          <Picker
-            selectedValue={formData.brand}
-            onValueChange={(value) => handleChange('brand', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select Brand" value="" />
-            {[
-              'Tata Motors Limited',
-              'Mahindra & Mahindra Limited',
-              'Eicher Motors Limited',
-              'Ashok Leyland Limited',
-              'Force Motors Limited',
-              'SML ISUZU Limited',
-              'Hindustan Motors',
-              "Daimler India Commercial Vehicles' BharatBenz",
-              'Volvo Trucks',
-              'Asia Motorworks',
-              'Scania Commercial Vehicles India Pvt. Ltd.',
-              'MAN Trucks India Pvt. Ltd.',
-              'Iveco',
-              'Bharat Earth Movers Limited (BEML)',
-              'JCB India Limited',
-              'Komatsu India Private Limited',
-              'Caterpillar India',
-              'John Deere India Private Limited',
-              'Case New Holland Construction Equipment India Private Limited',
-              'L&T Construction Equipment Limited',
-              'Others',
-            ].map((brand, index) => (
-              <Picker.Item key={index} label={brand} value={brand} />
-            ))}
-          </Picker>
+          <CustomPicker
+            label="Select Brand"
+            value={formData.brand}
+            options={vehicleBrands.map(brand => ({ label: brand, value: brand }))}
+            onSelect={value => handleChange('brand', value)}
+          />
 
           {/* Condition Selection */}
           <Text style={styles.label}>Condition *</Text>
@@ -175,7 +181,7 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
               <TouchableOpacity
                 key={condition}
                 style={[styles.optionButton, formData.condition === condition && styles.selectedOption]}
-                onPress={() => handleConditionSelection(condition)}
+                onPress={() => handleChange('condition', condition)}
               >
                 <Text style={formData.condition === condition ? styles.selectedText : styles.optionText}>{condition}</Text>
               </TouchableOpacity>
@@ -184,19 +190,12 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
 
           {/* Year Dropdown */}
           <Text style={styles.label}>Year *</Text>
-          <Picker
-            selectedValue={formData.year} // Tracks the selected value
-            onValueChange={(value) => handleChange('year', value)} // Updates the selected value
-            style={styles.picker}
-          >
-            {generateYears().map((year) => (
-              <Picker.Item
-                key={year}
-                label={year}
-                value={year}
-              />
-            ))}
-          </Picker>
+          <CustomPicker
+            label="Select Year"
+            value={formData.year}
+            options={generateYears().map(year => ({ label: year, value: year }))}
+            onSelect={value => handleChange('year', value)}
+          />
 
           {/* Fuel Type Selection */}
           <Text style={styles.label}>Fuel Type *</Text>
@@ -205,7 +204,7 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
               <TouchableOpacity
                 key={fuel}
                 style={[styles.optionButton, formData.fuelType === fuel && styles.selectedOption]}
-                onPress={() => handleFuelSelection(fuel)}
+                onPress={() => handleChange('fuelType', fuel)}
               >
                 <Text style={formData.fuelType === fuel ? styles.selectedText : styles.optionText}>{fuel}</Text>
               </TouchableOpacity>
@@ -229,7 +228,7 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
               <TouchableOpacity
                 key={owner}
                 style={[styles.optionButton, formData.owners === owner && styles.selectedOption]}
-                onPress={() => handleOwnersSelection(owner)}
+                onPress={() => handleChange('owners', owner)}
               >
                 <Text style={formData.owners === owner ? styles.selectedText : styles.optionText}>{owner}</Text>
               </TouchableOpacity>
@@ -297,6 +296,19 @@ const AddCommercialHeavyVehicle = ({ route, navigation }) => {
             keyboardType="numeric"
             value={formData.amount}
             onChangeText={(value) => handleChange('amount', value)}
+          />
+
+          {/* Address Field */}
+          <Text style={styles.label}>Address *</Text>
+          <AddressAutocomplete
+            initialAddress={formData.address}
+            initialLatitude={formData.latitude}
+            initialLongitude={formData.longitude}
+            onAddressSelect={handleAddressSelect}
+            styles={{
+              input: styles.input,
+              container: { marginBottom: 16 }
+            }}
           />
 
           {/* Image Picker */}

@@ -230,6 +230,13 @@ const MyAdsPage = ({ navigation }) => {
         ListFooterComponent={renderFooter}
         refreshing={isRefreshing}
         onRefresh={handleRefresh}
+        ListEmptyComponent={
+          !isLoading && (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>You have not posted any item yet.</Text>
+            </View>
+          )
+        }
       />
       <BottomNavBar navigation={navigation} />
 
@@ -458,6 +465,18 @@ const styles = StyleSheet.create({
   },
   confirmButtonText: {
     color: '#fff',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 300,
+  },
+  emptyText: {
+    fontSize: 20,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 40,
   },
 });
 

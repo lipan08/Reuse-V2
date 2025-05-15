@@ -5,7 +5,80 @@ import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AddressAutocomplete from '../AddressAutocomplete';
 import styles from '../../assets/css/AddProductForm.styles.js';
+import CustomPicker from './SubComponent/CustomPicker.js';
+
+const BRAND_OPTIONS = [
+  { label: 'Maruti Suzuki', value: 'Maruti Suzuki' },
+  { label: 'Hyundai', value: 'Hyundai' },
+  { label: 'Tata', value: 'Tata' },
+  { label: 'Mahindra', value: 'Mahindra' },
+  { label: 'Toyota', value: 'Toyota' },
+  { label: 'Honda', value: 'Honda' },
+  { label: 'BYD', value: 'BYD' },
+  { label: 'Audi', value: 'Audi' },
+  { label: 'Ambassador', value: 'Ambassador' },
+  { label: 'Ashok', value: 'Ashok' },
+  { label: 'Ashok Leyland', value: 'Ashok Leyland' },
+  { label: 'Aston', value: 'Aston' },
+  { label: 'Aston Martin', value: 'Aston Martin' },
+  { label: 'Bajaj', value: 'Bajaj' },
+  { label: 'Bentley', value: 'Bentley' },
+  { label: 'Citroen', value: 'Citroen' },
+  { label: 'McLaren', value: 'McLaren' },
+  { label: 'Fisker', value: 'Fisker' },
+  { label: 'BMW', value: 'BMW' },
+  { label: 'Bugatti', value: 'Bugatti' },
+  { label: 'Cadillac', value: 'Cadillac' },
+  { label: 'Caterham', value: 'Caterham' },
+  { label: 'Chevrolet', value: 'Chevrolet' },
+  { label: 'Chrysler', value: 'Chrysler' },
+  { label: 'Conquest', value: 'Conquest' },
+  { label: 'Daewoo', value: 'Daewoo' },
+  { label: 'Datsun', value: 'Datsun' },
+  { label: 'Dc', value: 'Dc' },
+  { label: 'Dodge', value: 'Dodge' },
+  { label: 'Eicher Polaris', value: 'Eicher Polaris' },
+  { label: 'Ferrari', value: 'Ferrari' },
+  { label: 'Fiat', value: 'Fiat' },
+  { label: 'Force Motors', value: 'Force Motors' },
+  { label: 'Ford', value: 'Ford' },
+  { label: 'Hummer', value: 'Hummer' },
+  { label: 'ICML', value: 'ICML' },
+  { label: 'Infiniti', value: 'Infiniti' },
+  { label: 'Isuzu', value: 'Isuzu' },
+  { label: 'Jaguar', value: 'Jaguar' },
+  { label: 'Jeep', value: 'Jeep' },
+  { label: 'Kia', value: 'Kia' },
+  { label: 'Lamborghini', value: 'Lamborghini' },
+  { label: 'Land Rover', value: 'Land Rover' },
+  { label: 'Lexus', value: 'Lexus' },
+  { label: 'Mahindra Renault', value: 'Mahindra Renault' },
+  { label: 'Maserati', value: 'Maserati' },
+  { label: 'Maybach', value: 'Maybach' },
+  { label: 'Mazda', value: 'Mazda' },
+  { label: 'Mercedes-Benz', value: 'Mercedes-Benz' },
+  { label: 'MG', value: 'MG' },
+  { label: 'Mini', value: 'Mini' },
+  { label: 'Mitsubishi', value: 'Mitsubishi' },
+  { label: 'Nissan', value: 'Nissan' },
+  { label: 'Opel', value: 'Opel' },
+  { label: 'Peugeot', value: 'Peugeot' },
+  { label: 'Porsche', value: 'Porsche' },
+  { label: 'Premier', value: 'Premier' },
+  { label: 'Renault', value: 'Renault' },
+  { label: 'Rolls-Royce', value: 'Rolls-Royce' },
+  { label: 'San', value: 'San' },
+  { label: 'Sipani', value: 'Sipani' },
+  { label: 'Skoda', value: 'Skoda' },
+  { label: 'Smart', value: 'Smart' },
+  { label: 'Ssangyong', value: 'Ssangyong' },
+  { label: 'Subaru', value: 'Subaru' },
+  { label: 'Volkswagen', value: 'Volkswagen' },
+  { label: 'Volvo', value: 'Volvo' },
+  { label: 'Other Brands', value: 'Other Brands' },
+];
 
 const AddCarForm = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
@@ -20,19 +93,21 @@ const AddCarForm = ({ route, navigation }) => {
     adTitle: '',
     description: '',
     amount: '',
+    address: '',
+    latitude: null,
+    longitude: null,
     images: [],
     deletedImages: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
+  const [isLoading, setIsLoading] = useState(!!product);
 
   // Fetch product details if editing
   useEffect(() => {
     const fetchProductDetails = async () => {
       if (!product) return;
 
-      setIsLoading(true); // Show loader immediately
-
+      setIsLoading(true);
       try {
         const token = await AsyncStorage.getItem('authToken');
         const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
@@ -44,8 +119,6 @@ const AddCarForm = ({ route, navigation }) => {
         if (response.ok) {
           const data = await response.json();
           const productData = data.data;
-
-          // Initialize form data with API response
           setFormData({
             id: productData.id,
             brand: productData.post_details?.brand || '',
@@ -57,6 +130,9 @@ const AddCarForm = ({ route, navigation }) => {
             adTitle: productData.title || '',
             description: productData.post_details?.description || '',
             amount: productData.post_details?.amount?.toString() || '',
+            address: productData.post_details?.address || '',
+            latitude: productData.post_details?.latitude || null,
+            longitude: productData.post_details?.longitude || null,
             images: productData.images?.map((url, index) => ({
               id: index,
               uri: url,
@@ -64,8 +140,6 @@ const AddCarForm = ({ route, navigation }) => {
             })) || [],
             deletedImages: [],
           });
-        } else {
-          console.error('Failed to fetch product details');
         }
       } catch (error) {
         console.error('Error fetching product details:', error);
@@ -73,7 +147,6 @@ const AddCarForm = ({ route, navigation }) => {
         setIsLoading(false);
       }
     };
-
     fetchProductDetails();
   }, [product]);
 
@@ -84,16 +157,22 @@ const AddCarForm = ({ route, navigation }) => {
     }));
   };
 
+  const handleAddressSelect = (location) => {
+    setFormData(prev => ({
+      ...prev,
+      address: location.address,
+      latitude: location.latitude,
+      longitude: location.longitude
+    }));
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
       const response = await submitForm(formData, subcategory);
-
-      if (response.success) {
-        navigation.goBack();
-      }
+      if (response.success) navigation.goBack();
     } catch (error) {
       console.error('Submission error:', error);
     } finally {
@@ -131,93 +210,21 @@ const AddCarForm = ({ route, navigation }) => {
 
           {/* Brand Field */}
           <Text style={styles.label}>Brand *</Text>
-          <Picker
-            selectedValue={formData.brand}
-            onValueChange={(value) => handleChange('brand', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select Brand" value="" />
-            <Picker.Item label="Maruti Suzuki" value="Maruti Suzuki" />
-            <Picker.Item label="Hyundai" value="Hyundai" />
-            <Picker.Item label="Tata" value="Tata" />
-            <Picker.Item label="Mahindra" value="Mahindra" />
-            <Picker.Item label="Toyota" value="Toyota" />
-            <Picker.Item label="Honda" value="Honda" />
-            <Picker.Item label="BYD" value="BYD" />
-            <Picker.Item label="Audi" value="Audi" />
-            <Picker.Item label="Ambassador" value="Ambassador" />
-            <Picker.Item label="Ashok" value="Ashok" />
-            <Picker.Item label="Ashok Leyland" value="Ashok Leyland" />
-            <Picker.Item label="Aston" value="Aston" />
-            <Picker.Item label="Aston Martin" value="Aston Martin" />
-            <Picker.Item label="Bajaj" value="Bajaj" />
-            <Picker.Item label="Bentley" value="Bentley" />
-            <Picker.Item label="Citroen" value="Citroen" />
-            <Picker.Item label="McLaren" value="McLaren" />
-            <Picker.Item label="Fisker" value="Fisker" />
-            <Picker.Item label="BMW" value="BMW" />
-            <Picker.Item label="Bugatti" value="Bugatti" />
-            <Picker.Item label="Cadillac" value="Cadillac" />
-            <Picker.Item label="Caterham" value="Caterham" />
-            <Picker.Item label="Chevrolet" value="Chevrolet" />
-            <Picker.Item label="Chrysler" value="Chrysler" />
-            <Picker.Item label="Conquest" value="Conquest" />
-            <Picker.Item label="Daewoo" value="Daewoo" />
-            <Picker.Item label="Datsun" value="Datsun" />
-            <Picker.Item label="Dc" value="Dc" />
-            <Picker.Item label="Dodge" value="Dodge" />
-            <Picker.Item label="Eicher Polaris" value="Eicher Polaris" />
-            <Picker.Item label="Ferrari" value="Ferrari" />
-            <Picker.Item label="Fiat" value="Fiat" />
-            <Picker.Item label="Force Motors" value="Force Motors" />
-            <Picker.Item label="Ford" value="Ford" />
-            <Picker.Item label="Hummer" value="Hummer" />
-            <Picker.Item label="ICML" value="ICML" />
-            <Picker.Item label="Infiniti" value="Infiniti" />
-            <Picker.Item label="Isuzu" value="Isuzu" />
-            <Picker.Item label="Jaguar" value="Jaguar" />
-            <Picker.Item label="Jeep" value="Jeep" />
-            <Picker.Item label="Kia" value="Kia" />
-            <Picker.Item label="Lamborghini" value="Lamborghini" />
-            <Picker.Item label="Land Rover" value="Land Rover" />
-            <Picker.Item label="Lexus" value="Lexus" />
-            <Picker.Item label="Mahindra Renault" value="Mahindra Renault" />
-            <Picker.Item label="Maserati" value="Maserati" />
-            <Picker.Item label="Maybach" value="Maybach" />
-            <Picker.Item label="Mazda" value="Mazda" />
-            <Picker.Item label="Mercedes-Benz" value="Mercedes-Benz" />
-            <Picker.Item label="MG" value="MG" />
-            <Picker.Item label="Mini" value="Mini" />
-            <Picker.Item label="Mitsubishi" value="Mitsubishi" />
-            <Picker.Item label="Nissan" value="Nissan" />
-            <Picker.Item label="Opel" value="Opel" />
-            <Picker.Item label="Peugeot" value="Peugeot" />
-            <Picker.Item label="Porsche" value="Porsche" />
-            <Picker.Item label="Premier" value="Premier" />
-            <Picker.Item label="Renault" value="Renault" />
-            <Picker.Item label="Rolls-Royce" value="Rolls-Royce" />
-            <Picker.Item label="San" value="San" />
-            <Picker.Item label="Sipani" value="Sipani" />
-            <Picker.Item label="Skoda" value="Skoda" />
-            <Picker.Item label="Smart" value="Smart" />
-            <Picker.Item label="Ssangyong" value="Ssangyong" />
-            <Picker.Item label="Subaru" value="Subaru" />
-            <Picker.Item label="Volkswagen" value="Volkswagen" />
-            <Picker.Item label="Volvo" value="Volvo" />
-            <Picker.Item label="Other Brands" value="Other Brands" />
-          </Picker>
+          <CustomPicker
+            label="Select Brand"
+            value={formData.brand}
+            options={BRAND_OPTIONS}
+            onSelect={value => handleChange('brand', value)}
+          />
 
           {/* Year Dropdown */}
           <Text style={styles.label}>Year *</Text>
-          <Picker
-            selectedValue={formData.year}
-            onValueChange={(value) => handleChange('year', value)}
-            style={styles.picker}
-          >
-            {generateYears().map((year) => (
-              <Picker.Item key={year} label={year} value={year} />
-            ))}
-          </Picker>
+          <CustomPicker
+            label="Select Year"
+            value={formData.year}
+            options={generateYears().map(year => ({ label: year, value: year }))}
+            onSelect={value => handleChange('year', value)}
+          />
 
           {/* Fuel Type Selection */}
           <Text style={styles.label}>Fuel Type *</Text>
@@ -298,6 +305,19 @@ const AddCarForm = ({ route, navigation }) => {
             keyboardType="numeric"
             value={formData.amount}
             onChangeText={(value) => handleChange('amount', value)}
+          />
+
+          {/* Address Field */}
+          <Text style={styles.label}>Address *</Text>
+          <AddressAutocomplete
+            initialAddress={formData.address}
+            initialLatitude={formData.latitude}
+            initialLongitude={formData.longitude}
+            onAddressSelect={handleAddressSelect}
+            styles={{
+              input: styles.input,
+              container: { marginBottom: 16 }
+            }}
           />
 
           {/* Image Picker */}

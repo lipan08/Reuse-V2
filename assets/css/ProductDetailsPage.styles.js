@@ -207,6 +207,22 @@ const styles = StyleSheet.create({
         marginRight: 8,
         flexShrink: 1, // Shrinks the text if space is limited
     },
+    mapAddressOverlay: {
+        position: 'absolute',
+        top: 12,
+        left: 12,
+        backgroundColor: 'rgba(255,255,255,0.92)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        maxWidth: '80%',
+        zIndex: 10,
+    },
+    mapAddressText: {
+        color: '#222',
+        fontSize: 13,
+        fontWeight: '500',
+    },
 });
 
 export default styles;

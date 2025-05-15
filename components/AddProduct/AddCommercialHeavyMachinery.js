@@ -5,7 +5,9 @@ import { submitForm } from '../../service/apiService';
 import { AlertNotificationRoot } from 'react-native-alert-notification';
 import ImagePickerComponent from './SubComponent/ImagePickerComponent';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import AddressAutocomplete from '../AddressAutocomplete';
 import styles from '../../assets/css/AddProductForm.styles.js';
+import CustomPicker from './SubComponent/CustomPicker';
 
 const AddCommercialHeavyMachinery = ({ route, navigation }) => {
   const { category, subcategory, product } = route.params;
@@ -24,19 +26,21 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
     contact_phone: '',
     amount: '',
     kmDriven: '',
+    address: '',
+    latitude: null,
+    longitude: null,
     images: [],
     deletedImages: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(!!product); // Show loader only if editing
+  const [isLoading, setIsLoading] = useState(!!product);
 
   // Fetch product details if editing
   useEffect(() => {
     const fetchProductDetails = async () => {
       if (!product) return;
 
-      setIsLoading(true); // Show loader immediately
-
+      setIsLoading(true);
       try {
         const token = await AsyncStorage.getItem('authToken');
         const apiURL = `${process.env.BASE_URL}/posts/${product.id}`;
@@ -48,8 +52,6 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
         if (response.ok) {
           const data = await response.json();
           const productData = data.data;
-
-          // Initialize form data with API response
           setFormData({
             id: productData.id,
             brand: productData.post_details?.brand || '',
@@ -65,6 +67,9 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
             contact_phone: productData.post_details?.contact_phone || '',
             amount: productData.post_details?.amount?.toString() || '',
             kmDriven: productData.post_details?.km_driven?.toString() || '',
+            address: productData.post_details?.address || '',
+            latitude: productData.post_details?.latitude || null,
+            longitude: productData.post_details?.longitude || null,
             images: productData.images?.map((url, index) => ({
               id: index,
               uri: url,
@@ -72,8 +77,6 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
             })) || [],
             deletedImages: [],
           });
-        } else {
-          console.error('Failed to fetch product details');
         }
       } catch (error) {
         console.error('Error fetching product details:', error);
@@ -81,7 +84,6 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
         setIsLoading(false);
       }
     };
-
     fetchProductDetails();
   }, [product]);
 
@@ -92,16 +94,22 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
     }));
   };
 
+  const handleAddressSelect = (location) => {
+    setFormData(prev => ({
+      ...prev,
+      address: location.address,
+      latitude: location.latitude,
+      longitude: location.longitude
+    }));
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
       const response = await submitForm(formData, subcategory);
-
-      if (response.success) {
-        navigation.goBack();
-      }
+      if (response.success) navigation.goBack();
     } catch (error) {
       console.error('Submission error:', error);
     } finally {
@@ -117,6 +125,34 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
     return years;
   };
 
+  const handleConditionSelection = (condition) => {
+    setFormData((prev) => ({
+      ...prev,
+      condition: condition,
+    }));
+  };
+
+  const handleFuelSelection = (fuel) => {
+    setFormData((prev) => ({
+      ...prev,
+      fuelType: fuel,
+    }));
+  };
+
+  const handleTransmissionSelection = (trans) => {
+    setFormData((prev) => ({
+      ...prev,
+      transmission: trans,
+    }));
+  };
+
+  const handleOwnersSelection = (owner) => {
+    setFormData((prev) => ({
+      ...prev,
+      owners: owner,
+    }));
+  };
+
   if (isLoading) {
     return (
       <View style={styles.loaderContainer}>
@@ -125,13 +161,6 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
       </View>
     );
   }
-
-  const handleOwnersSelection = (owner) => {
-    setFormData((prev) => ({
-      ...prev,
-      owners: owner, // Directly store the selected owner value (e.g., '1st', '2nd')
-    }));
-  };
 
   return (
     <AlertNotificationRoot>
@@ -144,13 +173,10 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
 
           {/* Brand Field */}
           <Text style={styles.label}>Brand *</Text>
-          <Picker
-            selectedValue={formData.brand}
-            onValueChange={(value) => handleChange('brand', value)}
-            style={styles.picker}
-          >
-            <Picker.Item label="Select Brand" value="" />
-            {[
+          <CustomPicker
+            label="Select Brand"
+            value={formData.brand}
+            options={[
               'Caterpillar',
               'JCB',
               'Tata Hitachi',
@@ -167,12 +193,9 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
               'John Deere',
               'XCMG',
               'Others',
-            ].map((brand, index) => (
-              <Picker.Item key={index} label={brand} value={brand} />
-            ))}
-          </Picker>
-
-
+            ].map(brand => ({ label: brand, value: brand }))}
+            onSelect={value => handleChange('brand', value)}
+          />
 
           {/* Condition Selection */}
           <Text style={styles.label}>Condition *</Text>
@@ -190,19 +213,12 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
 
           {/* Year Dropdown */}
           <Text style={styles.label}>Year *</Text>
-          <Picker
-            selectedValue={formData.year} // Tracks the selected value
-            onValueChange={(value) => handleChange('year', value)} // Updates the selected value
-            style={styles.picker}
-          >
-            {generateYears().map((year) => (
-              <Picker.Item
-                key={year}
-                label={year}
-                value={year}
-              />
-            ))}
-          </Picker>
+          <CustomPicker
+            label="Select Year"
+            value={formData.year}
+            options={generateYears().map(year => ({ label: year, value: year }))}
+            onSelect={value => handleChange('year', value)}
+          />
 
           {/* Fuel Type Selection */}
           <Text style={styles.label}>Fuel Type *</Text>
@@ -318,6 +334,20 @@ const AddCommercialHeavyMachinery = ({ route, navigation }) => {
             value={formData.amount}
             onChangeText={(value) => handleChange('amount', value)}
           />
+
+          {/* Address Field */}
+          <Text style={styles.label}>Address *</Text>
+          <AddressAutocomplete
+            initialAddress={formData.address}
+            initialLatitude={formData.latitude}
+            initialLongitude={formData.longitude}
+            onAddressSelect={handleAddressSelect}
+            styles={{
+              input: styles.input,
+              container: { marginBottom: 16 }
+            }}
+          />
+
           {/* Image Picker */}
           <ImagePickerComponent
             formData={formData}

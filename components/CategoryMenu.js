@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+
+const { width, height } = Dimensions.get('window');
+const scale = width / 375;
+const verticalScale = height / 812;
+const normalize = (size) => Math.round(scale * size);
+const normalizeVertical = (size) => Math.round(verticalScale * size);
+
 
 const CategoryMenu = ({ onCategorySelect, selectedCategory }) => {
   const [selectedCategoryId, setSelectedCategoryId] = useState(selectedCategory);
@@ -33,7 +40,7 @@ const CategoryMenu = ({ onCategorySelect, selectedCategory }) => {
       ]}
       onPress={() => handleCategorySelect(item.id)}
     >
-      <Icon name={item.icon} size={24} color={item.color} />
+      <Icon name={item.icon} size={normalize(23)} color={item.color} />
       <Text style={styles.categoryName}>{item.name}</Text>
     </TouchableOpacity>
   );
@@ -51,27 +58,28 @@ const CategoryMenu = ({ onCategorySelect, selectedCategory }) => {
   );
 };
 
+
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 15,
+    paddingHorizontal: normalize(8),
+    paddingVertical: normalizeVertical(10),
     borderBottomWidth: 1,
     borderBottomColor: '#ccc',
   },
   categoryItem: {
-    marginRight: 20,
+    marginRight: normalize(14),
     alignItems: 'center',
   },
   categoryName: {
-    marginTop: 5,
-    fontSize: 12,
-    color: '#000', // Default text color
+    marginTop: normalizeVertical(3),
+    fontSize: normalize(10),
+    color: '#000',
   },
   selectedCategory: {
     borderBottomWidth: 2,
-    borderBottomColor: '#007bff', // Blue color for the selected category
+    borderBottomColor: '#007bff',
   },
 });
 

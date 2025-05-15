@@ -8,12 +8,19 @@ import {
     KeyboardAvoidingView,
     TextInput,
     FlatList,
-    ActivityIndicator
+    ActivityIndicator,
+    Dimensions
 } from 'react-native';
 import 'react-native-get-random-values';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MapView, { Marker } from 'react-native-maps';
 import { AlertNotificationRoot, Toast, ALERT_TYPE } from 'react-native-alert-notification';
+
+const { width, height } = Dimensions.get('window');
+const scale = width / 375;
+const verticalScale = height / 812;
+const normalize = (size) => Math.round(scale * size);
+const normalizeVertical = (size) => Math.round(verticalScale * size);
 
 const LocationPicker = ({ navigation }) => {
     const [location, setLocation] = useState({
@@ -166,48 +173,44 @@ const LocationPicker = ({ navigation }) => {
 
 // Keep the same styles as previous version
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-    map: {
-        flex: 1,
-    },
+    container: { flex: 1 },
+    map: { flex: 1 },
     searchContainer: {
         position: 'absolute',
-        top: Platform.select({ ios: 50, android: 20 }),
-        width: '90%',
+        top: Platform.select({ ios: normalizeVertical(18), android: normalizeVertical(10) }),
+        width: '92%',
         alignSelf: 'center',
         backgroundColor: 'white',
-        borderRadius: 8,
+        borderRadius: normalize(6),
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+        elevation: 3,
     },
     searchInput: {
-        padding: 15,
-        fontSize: 16,
+        padding: normalize(14),
+        fontSize: normalize(12),
         color: '#333',
     },
     predictionsList: {
-        maxHeight: 200,
+        maxHeight: normalizeVertical(100),
         borderTopWidth: 1,
         borderColor: '#eee',
     },
     predictionItem: {
-        padding: 15,
+        padding: normalize(8),
         borderBottomWidth: 1,
         borderColor: '#eee',
     },
     predictionText: {
-        fontSize: 14,
+        fontSize: normalize(10),
         color: '#333',
     },
     loader: {
         position: 'absolute',
-        right: 15,
-        top: 18,
+        right: normalize(10),
+        top: normalizeVertical(10),
     },
     buttonContainer: {
         position: 'absolute',
@@ -219,7 +222,7 @@ const styles = StyleSheet.create({
     },
     button: {
         flex: 1,
-        paddingVertical: 15,
+        paddingVertical: normalizeVertical(14),
         paddingHorizontal: 0,
         borderRadius: 0,
     },
@@ -231,7 +234,7 @@ const styles = StyleSheet.create({
     },
     buttonText: {
         color: 'white',
-        fontSize: 16,
+        fontSize: normalize(12),
         textAlign: 'center',
     },
 });

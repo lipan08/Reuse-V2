@@ -1,11 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
 const AccountPage = ({ navigation }) => {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [userName, setUserName] = useState('');
+    const [userImage, setUserImage] = useState('https://cdn-icons-png.flaticon.com/512/3135/3135715.png');
     const profileImage = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'; // Provided profile image URL
+
+    useEffect(() => {
+        const fetchProfile = async () => {
+            const name = await AsyncStorage.getItem('userName');
+            const image = await AsyncStorage.getItem('userImage');
+            if (name) setUserName(name);
+            if (image) setUserImage(image);
+        };
+        fetchProfile();
+        // Optionally, add a focus listener to refresh when coming back from EditProfilePage
+        const unsubscribe = navigation.addListener('focus', fetchProfile);
+        return unsubscribe;
+    }, [navigation]);
+
 
     const handleLogout = async () => {
         try {
@@ -32,10 +48,13 @@ const AccountPage = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <View style={styles.profileSection}>
-                <Image source={{ uri: profileImage }} style={styles.profileImage} />
-                <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfilePage')}>
-                    <Text style={styles.editButtonText}>Edit Profile</Text>
-                </TouchableOpacity>
+                <Image source={{ uri: userImage }} style={styles.profileImage} />
+                <View>
+                    <Text style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4 }}>{userName}</Text>
+                    <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfilePage')}>
+                        <Text style={styles.editButtonText}>Edit Profile</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
             {renderAccountLink('Following', 'users', () => navigation.navigate('FollowingPage'), '#FF9800')}
             {renderAccountLink('Buy Packages', 'shopping-cart', () => navigation.navigate('PackagePage'), '#FF9800')}

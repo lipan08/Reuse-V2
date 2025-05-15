@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import BottomNavBar from './BottomNavBar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -10,6 +10,12 @@ import {
   AppOpenAd,
   AdEventType,
 } from 'react-native-google-mobile-ads';
+
+const { width, height } = Dimensions.get('window');
+const scale = width / 375;
+const verticalScale = height / 812;
+const normalize = (size) => Math.round(scale * size);
+const normalizeVertical = (size) => Math.round(verticalScale * size);
 
 const adUnitId = __DEV__ ? TestIds.ADAPTIVE_BANNER : process.env.G_BANNER_AD_UNIT_ID;
 
@@ -69,6 +75,11 @@ const ChatList = ({ navigation }) => {
         renderItem={renderChatItem}
         keyExtractor={(chat) => chat.id}
         contentContainerStyle={styles.chatList}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No chats available yet.</Text>
+          </View>
+        }
       />
       <BottomNavBar />
     </View>
@@ -81,23 +92,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   chatList: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    marginBottom: 50,
+    paddingHorizontal: normalize(8),
+    paddingVertical: normalizeVertical(8),
+    marginBottom: normalizeVertical(38),
   },
   chatItem: {
     borderBottomWidth: 1,
     borderBottomColor: '#CCCCCC',
-    paddingVertical: 12,
+    paddingVertical: normalizeVertical(8),
   },
   userName: {
     fontWeight: 'bold',
-    fontSize: 16,
-    marginBottom: 6,
+    fontSize: normalize(12),
+    marginBottom: normalizeVertical(3),
   },
   message: {
-    fontSize: 14,
+    fontSize: normalize(10),
     color: '#555555',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 300,
+  },
+  emptyText: {
+    fontSize: 20,
+    color: '#888',
+    textAlign: 'center',
+    marginTop: 40,
   },
 });
 
