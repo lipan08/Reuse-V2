@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, Alert, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+const { width } = Dimensions.get('window');
+const scale = width / 375;
+const normalize = (size) => Math.round(scale * size);
 
 const SettingsPage = ({ navigation }) => {
     const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
@@ -11,7 +15,7 @@ const SettingsPage = ({ navigation }) => {
     };
 
     const handleDeleteAccount = () => {
-        setIsDeleteModalVisible(true); // Show delete confirmation modal
+        setIsDeleteModalVisible(true);
     };
 
     const confirmDeletion = async () => {
@@ -36,7 +40,7 @@ const SettingsPage = ({ navigation }) => {
     };
 
     const handleLogoutAllDevices = () => {
-        setIsLogoutModalVisible(true); // Show logout confirmation modal
+        setIsLogoutModalVisible(true);
     };
 
     const confirmLogout = async () => {
@@ -64,24 +68,22 @@ const SettingsPage = ({ navigation }) => {
         // Logic for enabling or managing 2FA
     };
 
+    const renderSettingLink = (text, icon, color, onPress) => (
+        <TouchableOpacity style={styles.linkItem} onPress={onPress} activeOpacity={0.8}>
+            <View style={[styles.iconCircle, { backgroundColor: color + '22' }]}>
+                <Icon name={icon} size={normalize(22)} color={color} />
+            </View>
+            <Text style={styles.linkText}>{text}</Text>
+            <Icon name="chevron-right" size={normalize(18)} color="#bbb" />
+        </TouchableOpacity>
+    );
+
     return (
         <View style={styles.container}>
-            {/* <TouchableOpacity style={styles.linkItem} onPress={handlePasswordChange}>
-                <Icon name="key-variant" size={24} color="#D9534F" style={styles.icon} />
-                <Text style={styles.linkText}>Change Password</Text>
-            </TouchableOpacity> */}
-            <TouchableOpacity style={styles.linkItem} onPress={handleDeleteAccount}>
-                <Icon name="delete-outline" size={24} color="#4B9CD3" style={styles.icon} />
-                <Text style={styles.linkText}>Delete Account</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.linkItem} onPress={handleLogoutAllDevices}>
-                <Icon name="logout-variant" size={24} color="#F0AD4E" style={styles.icon} />
-                <Text style={styles.linkText}>Logout from All Devices</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.linkItem} onPress={handleUse2FA}>
-                <Icon name="shield-lock" size={24} color="#5CB85C" style={styles.icon} />
-                <Text style={styles.linkText}>Use 2FA Authorization</Text>
-            </TouchableOpacity>
+            {/* {renderSettingLink('Change Password', 'key-variant', '#D9534F', handlePasswordChange)} */}
+            {renderSettingLink('Delete Account', 'delete-outline', '#4B9CD3', handleDeleteAccount)}
+            {renderSettingLink('Logout from All Devices', 'logout-variant', '#F0AD4E', handleLogoutAllDevices)}
+            {renderSettingLink('Use 2FA Authorization', 'shield-lock', '#5CB85C', handleUse2FA)}
 
             {/* Delete Confirmation Modal */}
             <Modal
@@ -135,32 +137,42 @@ const SettingsPage = ({ navigation }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 20,
-        alignItems: 'center',
-        justifyContent: 'center',
+        paddingTop: normalize(30),
+        marginTop: normalize(50),
+        paddingHorizontal: normalize(18),
         backgroundColor: '#F5F5F5',
+        alignItems: 'center',
     },
     linkItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 15,
+        marginBottom: normalize(16),
         backgroundColor: '#FFFFFF',
-        padding: 10,
-        borderRadius: 8,
+        paddingVertical: normalize(14),
+        paddingHorizontal: normalize(16),
+        borderRadius: normalize(12),
         width: '100%',
+        maxWidth: 420,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
+        shadowOpacity: 0.04,
+        shadowRadius: 2,
+        elevation: 1,
     },
-    icon: {
-        marginRight: 10,
+    iconCircle: {
+        width: normalize(38),
+        height: normalize(38),
+        borderRadius: normalize(19),
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: normalize(14),
     },
     linkText: {
-        fontSize: 16,
-        color: 'black',
-        flexGrow: 1,
+        flex: 1,
+        fontSize: normalize(16),
+        color: '#222',
+        fontWeight: '500',
+        marginLeft: 2,
     },
     modalOverlay: {
         flex: 1,
@@ -170,21 +182,23 @@ const styles = StyleSheet.create({
     },
     modalContainer: {
         backgroundColor: 'white',
-        padding: 20,
-        borderRadius: 10,
-        width: '80%',
+        padding: normalize(24),
+        borderRadius: 12,
+        width: '85%',
+        maxWidth: 400,
         alignItems: 'center',
     },
     modalTitle: {
-        fontSize: 20,
+        fontSize: normalize(20),
         fontWeight: 'bold',
-        marginBottom: 10,
+        marginBottom: normalize(10),
+        color: '#222',
     },
     modalText: {
-        fontSize: 16,
+        fontSize: normalize(16),
         color: '#333',
         textAlign: 'center',
-        marginBottom: 20,
+        marginBottom: normalize(20),
     },
     modalButtons: {
         flexDirection: 'row',
@@ -194,8 +208,8 @@ const styles = StyleSheet.create({
     cancelButton: {
         flex: 1,
         backgroundColor: '#ccc',
-        paddingVertical: 10,
-        borderRadius: 5,
+        paddingVertical: normalize(12),
+        borderRadius: 6,
         alignItems: 'center',
         marginRight: 10,
     },
@@ -205,9 +219,9 @@ const styles = StyleSheet.create({
     },
     confirmButton: {
         flex: 1,
-        backgroundColor: 'red',
-        paddingVertical: 10,
-        borderRadius: 5,
+        backgroundColor: '#4B9CD3',
+        paddingVertical: normalize(12),
+        borderRadius: 6,
         alignItems: 'center',
     },
     confirmButtonText: {

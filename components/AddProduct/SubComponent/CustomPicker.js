@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Modal, View, Text, TouchableOpacity, FlatList, StyleSheet, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Modal, View, Text, TouchableOpacity, FlatList, StyleSheet, Dimensions, BackHandler } from 'react-native';
 const { width, height } = Dimensions.get('window');
 const scale = width / 375;
 const verticalScale = height / 812;
@@ -8,6 +8,23 @@ const normalizeVertical = (size) => Math.round(verticalScale * size);
 
 const CustomPicker = ({ label, value, options, onSelect }) => {
     const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        const backAction = () => {
+            if (visible) {
+                setVisible(false);
+                return true; // Prevent default back behavior
+            }
+            return false;
+        };
+
+        const backHandler = BackHandler.addEventListener(
+            'hardwareBackPress',
+            backAction
+        );
+
+        return () => backHandler.remove();
+    }, [visible]);
 
     return (
         <>
@@ -19,6 +36,13 @@ const CustomPicker = ({ label, value, options, onSelect }) => {
             <Modal visible={visible} transparent animationType="fade">
                 <TouchableOpacity style={styles.modalOverlay} onPress={() => setVisible(false)}>
                     <View style={styles.modalContent}>
+                        {/* Updated header with matching styling */}
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalHeaderText}>
+                                Select from the list
+                            </Text>
+                        </View>
+
                         <FlatList
                             data={options}
                             keyExtractor={item => item.value}
@@ -34,6 +58,7 @@ const CustomPicker = ({ label, value, options, onSelect }) => {
                                 </TouchableOpacity>
                             )}
                             ItemSeparatorComponent={() => <View style={styles.separator} />}
+                            contentContainerStyle={styles.listContent}
                         />
                     </View>
                 </TouchableOpacity>
@@ -67,7 +92,7 @@ const styles = StyleSheet.create({
     modalContent: {
         backgroundColor: '#fff',
         borderRadius: normalize(10),
-        maxHeight: normalizeVertical(520), // Responsive modal height
+        maxHeight: normalizeVertical(320), // Responsive modal height
         overflow: 'hidden',
     },
     option: {
@@ -82,6 +107,22 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: '#eee',
         marginHorizontal: normalize(10),
+    },
+    modalHeader: {
+        paddingVertical: normalizeVertical(14),
+        paddingHorizontal: normalize(18),
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee', // Match separator color
+        backgroundColor: '#f8f8f8', // Light background
+    },
+    modalHeaderText: {
+        fontSize: normalize(16),
+        color: '#007BFF', // Match your primary color
+        fontWeight: '600',
+        textAlign: 'center',
+    },
+    listContent: {
+        paddingBottom: normalizeVertical(16),
     },
 });
 

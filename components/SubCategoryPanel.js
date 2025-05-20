@@ -1,77 +1,124 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+// components/SubCategoryPanel.js
+import React, { memo } from 'react';
+import { View, Text, TouchableHighlight, StyleSheet, FlatList } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome6';
 
 const iconMapping = {
     electronics: 'laptop',
-    fashion: 'shoe-sneaker',
-    furniture: 'lamp',
-    services: 'wrench',
-    // Add more subcategory mappings as needed
+    fashion: 'shirt',
+    furniture: 'couch',
+    services: 'screwdriver-wrench',
+    properties: 'house',
+    vehicles: 'car',
 };
 
-const SubCategoryPanel = ({ subcategories, onSelectSubcategory, selectedSubcategory }) => {
-    return (
-        <ScrollView style={styles.panelContainer}>
-            {subcategories.length > 0 ? (
-                subcategories.map((subcategory) => {
-                    const isSelected = selectedSubcategory?.id === subcategory.id; // Check if the subcategory is selected
-                    return (
-                        <TouchableOpacity
-                            key={subcategory.id}
-                            style={[styles.panelItem, isSelected && styles.selectedItem]} // Apply selected style
-                            onPress={() => onSelectSubcategory(subcategory)}
-                        >
-                            <Icon name={iconMapping[subcategory.guard_name] || 'angles-right'} size={20} color="#FF9800" style={styles.icon} />
-                            <Text style={[styles.text, isSelected && styles.selectedText]}>{subcategory.name}</Text>
-                            <Icon name="chevron-right" size={20} color="#888" style={styles.arrowIcon} />
-                        </TouchableOpacity>
-                    );
-                })
-            ) : (
-                <Text style={styles.noSubcategoryText}>No Subcategories</Text>
-            )}
-        </ScrollView>
+const SubCategoryPanel = memo(({ subcategories, onSelectSubcategory, parentCategoryName }) => {
+    const renderItem = ({ item }) => (
+        <TouchableHighlight
+            underlayColor="#F0F0F0"
+            style={styles.itemContainer}
+            onPress={() => onSelectSubcategory(item)}
+        >
+            <View style={styles.itemContent}>
+                <Icon
+                    name={iconMapping[item.guard_name] || 'circle-chevron-right'}
+                    size={20}
+                    color="#FF6B6B"
+                    style={styles.icon}
+                />
+                <Text style={styles.itemText}>{item.name}</Text>
+                <Icon
+                    name="chevron-right"
+                    size={18}
+                    color="#888888"
+                    style={styles.arrow}
+                />
+            </View>
+        </TouchableHighlight>
     );
-};
+
+    return (
+        <View style={styles.container}>
+            <View style={styles.header}>
+                <Text style={styles.headerText}>{parentCategoryName}</Text>
+                <Text style={styles.subHeaderText}>Select Subcategory</Text>
+            </View>
+            <FlatList
+                data={subcategories}
+                renderItem={renderItem}
+                keyExtractor={(item) => item.id.toString()}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={
+                    <View style={styles.emptyContainer}>
+                        <Icon name="folder-open" size={32} color="#CCCCCC" />
+                        <Text style={styles.emptyText}>No subcategories available</Text>
+                    </View>
+                }
+            />
+        </View>
+    );
+});
 
 const styles = StyleSheet.create({
-    panelContainer: {
-        width: '100%',
-        padding: 10,
-        backgroundColor: '#f1f1f1',
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
     },
-    panelItem: {
+    header: {
+        padding: 24,
+        borderBottomWidth: 1,
+        borderBottomColor: '#EEEEEE',
+    },
+    headerText: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#333333',
+        marginBottom: 4,
+    },
+    subHeaderText: {
+        fontSize: 14,
+        color: '#888888',
+    },
+    listContent: {
+        padding: 16,
+    },
+    itemContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        marginBottom: 12,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+    },
+    itemContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 10,
-        backgroundColor: '#d1d1d1',
-        borderRadius: 5,
-        marginBottom: 8,
-    },
-    selectedItem: {
-        backgroundColor: '#2196F3', // Highlight selected item
+        padding: 16,
     },
     icon: {
-        marginRight: 8,
+        marginRight: 16,
     },
-    text: {
-        fontSize: 14,
-        color: '#333',
-        flexShrink: 1,
+    itemText: {
+        flex: 1,
+        fontSize: 16,
+        color: '#333333',
+        fontWeight: '500',
     },
-    selectedText: {
-        color: '#fff', // Change text color for selected item
+    arrow: {
+        marginLeft: 8,
     },
-    arrowIcon: {
-        marginLeft: 'auto', // Push the arrow to the right
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 32,
     },
-    noSubcategoryText: {
-        padding: 15,
-        textAlign: 'center',
-        color: '#888',
-        fontSize: 14,
+    emptyText: {
+        marginTop: 16,
+        color: '#CCCCCC',
+        fontSize: 16,
     },
 });
 

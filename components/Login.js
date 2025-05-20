@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, FlatList, TouchableWithoutFeedback } from 'react-native';
-import { ALERT_TYPE, Dialog, AlertNotificationRoot } from 'react-native-alert-notification';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Modal, FlatList, TouchableWithoutFeedback, StatusBar } from 'react-native';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { useNavigation } from '@react-navigation/native';
 
 const countryCodes = [
@@ -87,15 +87,56 @@ const countryCodes = [
    { code: '+599', name: 'Netherlands Antilles' },
 ];
 
+const AlertModal = ({ visible, type, title, message, onClose }) => {
+   const getIconConfig = () => {
+      switch (type) {
+         case 'success': return { name: 'check-circle', color: '#4CAF50' };
+         case 'error': return { name: 'error-outline', color: '#f44336' };
+         case 'warning': return { name: 'warning', color: '#FF9800' };
+         default: return { name: 'info', color: '#2196F3' };
+      }
+   };
+
+   const { name, color } = getIconConfig();
+
+   return (
+      <Modal visible={visible} transparent animationType="fade">
+         <TouchableWithoutFeedback onPress={onClose}>
+            <View style={styles.alertModalOverlay}>
+               <TouchableWithoutFeedback>
+                  <View style={styles.alertContainer}>
+                     <MaterialIcons name={name} size={48} color={color} style={styles.alertIcon} />
+                     <Text style={styles.alertTitle}>{title}</Text>
+                     <Text style={styles.alertMessage}>{message}</Text>
+                     <TouchableOpacity
+                        style={[styles.alertButton, { backgroundColor: color }]}
+                        onPress={onClose}
+                        activeOpacity={0.8}
+                     >
+                        <Text style={styles.alertButtonText}>OK</Text>
+                     </TouchableOpacity>
+                  </View>
+               </TouchableWithoutFeedback>
+            </View>
+         </TouchableWithoutFeedback>
+      </Modal>
+   );
+};
+
 const Login = () => {
    const [isLoggedIn, setIsLoggedIn] = useState(false);
-   const [countryCode, setCountryCode] = useState('+91'); // Default country code
+   const [countryCode, setCountryCode] = useState('+91');
    const [phoneNumber, setPhoneNumber] = useState('');
    const [otp, setOtp] = useState('');
    const [showOtpField, setShowOtpField] = useState(false);
-   const [isModalVisible, setIsModalVisible] = useState(false); // For dropdown modal
-   const [searchQuery, setSearchQuery] = useState(''); // For filtering countries
+   const [isModalVisible, setIsModalVisible] = useState(false);
+   const [searchQuery, setSearchQuery] = useState('');
+   const [showAlert, setShowAlert] = useState(false);
+   const [alertType, setAlertType] = useState('info');
+   const [alertTitle, setAlertTitle] = useState('');
+   const [alertMessage, setAlertMessage] = useState('');
    const navigation = useNavigation();
+   const otpInputRef = useRef(null);
 
    useEffect(() => {
       const checkLoginStatus = async () => {
@@ -103,11 +144,6 @@ const Login = () => {
          if (token) {
             setIsLoggedIn(true);
             navigation.navigate('Home');
-         } else {
-            setShowOtpField(false);
-            setCountryCode('+91');
-            setPhoneNumber('');
-            setOtp('');
          }
       };
       checkLoginStatus();
@@ -115,61 +151,50 @@ const Login = () => {
 
    const handlePhoneNumberSubmit = async () => {
       if (!phoneNumber || phoneNumber.length < 10) {
-         Dialog.show({
-            type: ALERT_TYPE.WARNING,
-            title: 'Invalid Phone',
-            textBody: 'Please enter a valid phone number.',
-            button: 'OK',
-         });
+         setAlertType('error');
+         setAlertTitle('Invalid Phone');
+         setAlertMessage('Please enter a valid 10-digit phone number');
+         setShowAlert(true);
          return;
       }
-
-      // Send OTP here
       setShowOtpField(true);
+      setTimeout(() => {
+         otpInputRef.current?.focus();
+      }, 100);
    };
 
    const handleOtpSubmit = async () => {
       try {
          const response = await fetch(`${process.env.BASE_URL}/login`, {
             method: 'POST',
-            headers: {
-               'Content-Type': 'application/json',
-            },
-            //${countryCode}
-            body: JSON.stringify({
-               phoneNumber: `${phoneNumber}`,
-               otp,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phoneNumber: `${phoneNumber}`, otp }),
          });
 
          const data = await response.json();
 
          if (response.ok) {
-            await AsyncStorage.setItem('authToken', data.token);
-            await AsyncStorage.setItem('userId', data.user.id.toString());
-            await AsyncStorage.setItem('name', data.user.name);
-            await AsyncStorage.setItem('phoneNo', data.user.phone_no);
-
-            await AsyncStorage.setItem('userName', data.user.name || '');
-            await AsyncStorage.setItem('userImage', data.user.images?.url || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png');
+            await AsyncStorage.multiSet([
+               ['authToken', data.token],
+               ['userId', data.user.id.toString()],
+               ['name', data.user.name],
+               ['phoneNo', data.user.phone_no],
+               ['userName', data.user.name || ''],
+               ['userImage', data.user.images?.url || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png']
+            ]);
             setIsLoggedIn(true);
             navigation.navigate('Home');
          } else {
-            Dialog.show({
-               type: ALERT_TYPE.WARNING,
-               title: 'Login Failed',
-               textBody: 'The provided credentials are incorrect.',
-               button: 'Close',
-            });
+            setAlertType('error');
+            setAlertTitle('Login Failed');
+            setAlertMessage(data.message || 'Invalid credentials');
+            setShowAlert(true);
          }
       } catch (error) {
-         console.log(error);
-         Dialog.show({
-            type: ALERT_TYPE.WARNING,
-            title: 'Error',
-            textBody: 'Something went wrong. Please try again later.',
-            button: 'Close',
-         });
+         setAlertType('error');
+         setAlertTitle('Connection Error');
+         setAlertMessage('Please check your internet connection');
+         setShowAlert(true);
       }
    };
 
@@ -180,10 +205,9 @@ const Login = () => {
       setCountryCode('+91');
       setPhoneNumber('');
       setOtp('');
-      navigation.navigate('Login');
    };
 
-   const filteredCountries = countryCodes.filter((country) =>
+   const filteredCountries = countryCodes.filter(country =>
       country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       country.code.includes(searchQuery)
    );
@@ -201,8 +225,18 @@ const Login = () => {
    );
 
    return (
-      <AlertNotificationRoot>
+      <>
+         <StatusBar backgroundColor="#f0f4f8" barStyle="dark-content" />
          <View style={styles.container}>
+            <AlertModal
+               visible={showAlert}
+               type={alertType}
+               title={alertTitle}
+               message={alertMessage}
+               onClose={() => setShowAlert(false)}
+            />
+
+
             <Text style={styles.loginTitle}>Welcome to Reuse!</Text>
             <Text style={styles.loginSubtitle}>Login to your account</Text>
 
@@ -210,33 +244,43 @@ const Login = () => {
                <TouchableOpacity
                   style={styles.countryCodeInput}
                   onPress={() => setIsModalVisible(true)}
+                  activeOpacity={0.8}
                >
                   <Text style={styles.countryCodeText}>{countryCode}</Text>
+                  <MaterialIcons name="arrow-drop-down" size={24} color="#666" />
                </TouchableOpacity>
+
                <TextInput
                   style={styles.phoneNumberInput}
                   value={phoneNumber}
                   onChangeText={setPhoneNumber}
                   keyboardType="phone-pad"
-                  placeholder="Phone Number"
+                  placeholder="Enter phone number"
+                  placeholderTextColor="#999"
                />
             </View>
 
             {showOtpField && (
                <TextInput
+                  ref={otpInputRef}
                   style={styles.input}
                   placeholder="Enter OTP"
+                  placeholderTextColor="#999"
                   value={otp}
                   onChangeText={setOtp}
                   keyboardType="number-pad"
+                  autoFocus={true}
                />
             )}
 
             <TouchableOpacity
                style={styles.loginButton}
                onPress={showOtpField ? handleOtpSubmit : handlePhoneNumberSubmit}
+               activeOpacity={0.8}
             >
-               <Text style={styles.buttonText}>{showOtpField ? 'Submit OTP' : 'Send OTP'}</Text>
+               <Text style={styles.buttonText}>
+                  {showOtpField ? 'Verify OTP' : 'Send OTP'}
+               </Text>
             </TouchableOpacity>
 
             {isLoggedIn && (
@@ -245,31 +289,43 @@ const Login = () => {
                </TouchableOpacity>
             )}
 
-            {/* Modal for Country Code Selection */}
-            <Modal
-               visible={isModalVisible}
-               transparent
-               animationType="slide"
-            >
-               <TouchableWithoutFeedback onPress={() => setIsModalVisible(false)}>
-                  <View style={styles.modalOverlay} />
-               </TouchableWithoutFeedback>
-               <View style={styles.modalContainer}>
-                  <TextInput
-                     style={styles.searchInput}
-                     placeholder="Search country or code"
-                     value={searchQuery}
-                     onChangeText={setSearchQuery}
-                  />
-                  <FlatList
-                     data={filteredCountries}
-                     keyExtractor={(item) => item.code}
-                     renderItem={renderCountryCodeItem}
-                  />
+            {/* Country Code Selection Modal */}
+            <Modal visible={isModalVisible} transparent animationType="slide">
+               <View style={styles.modalOverlay}>
+                  <View style={styles.modalContainer}>
+                     <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Select Country</Text>
+                        <TouchableOpacity
+                           onPress={() => setIsModalVisible(false)}
+                           style={styles.closeButton}
+                        >
+                           <MaterialIcons name="close" size={24} color="#666" />
+                        </TouchableOpacity>
+                     </View>
+
+                     <View style={styles.searchContainer}>
+                        <MaterialIcons name="search" size={20} color="#666" style={styles.searchIcon} />
+                        <TextInput
+                           style={styles.searchInput}
+                           placeholder="Search country or code"
+                           placeholderTextColor="#999"
+                           value={searchQuery}
+                           onChangeText={setSearchQuery}
+                        />
+                     </View>
+
+                     <FlatList
+                        data={filteredCountries}
+                        keyExtractor={(item) => item.code}
+                        renderItem={renderCountryCodeItem}
+                        keyboardDismissMode="on-drag"
+                        contentContainerStyle={styles.countryList}
+                     />
+                  </View>
                </View>
             </Modal>
          </View>
-      </AlertNotificationRoot>
+      </>
    );
 };
 
@@ -281,112 +337,176 @@ const styles = StyleSheet.create({
       justifyContent: 'center',
    },
    loginTitle: {
-      fontSize: 26,
-      fontWeight: 'bold',
+      fontSize: 28,
+      fontWeight: '700',
       color: '#2c3e50',
-      marginBottom: 5,
+      marginBottom: 8,
       textAlign: 'center',
    },
    loginSubtitle: {
       fontSize: 16,
       color: '#7f8c8d',
-      marginBottom: 20,
+      marginBottom: 32,
       textAlign: 'center',
    },
    phoneInputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 15,
+      marginBottom: 20,
    },
    countryCodeInput: {
-      height: 45,
-      borderColor: '#dcdcdc',
-      borderWidth: 1,
-      borderRadius: 6,
-      paddingHorizontal: 12,
-      backgroundColor: '#ffffff',
-      justifyContent: 'center',
+      flexDirection: 'row',
       alignItems: 'center',
-      marginRight: 10,
+      justifyContent: 'space-between',
+      height: 50,
+      borderColor: '#ddd',
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      backgroundColor: '#fff',
+      marginRight: 12,
+      minWidth: 100,
    },
    countryCodeText: {
-      fontSize: 14,
-      color: '#34495e',
+      fontSize: 16,
+      color: '#333',
    },
    phoneNumberInput: {
-      height: 45,
-      borderColor: '#dcdcdc',
-      borderWidth: 1,
-      borderRadius: 6,
-      paddingHorizontal: 12,
-      backgroundColor: '#ffffff',
       flex: 1,
-      fontSize: 14,
-      color: '#34495e',
+      height: 50,
+      borderColor: '#ddd',
+      borderWidth: 1,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      backgroundColor: '#fff',
+      fontSize: 16,
+      color: '#333',
    },
    input: {
-      height: 45,
-      borderColor: '#dcdcdc',
-      borderWidth: 1,
-      borderRadius: 6,
-      paddingHorizontal: 12,
-      backgroundColor: '#ffffff',
-      marginBottom: 15,
-      width: '100%',
-      fontSize: 14,
-      color: '#34495e',
+      height: 50,
+      borderColor: '#3498db',
+      borderWidth: 2,
+      borderRadius: 12,
+      paddingHorizontal: 16,
+      backgroundColor: '#fff',
+      marginBottom: 20,
+      fontSize: 16,
+      color: '#333',
    },
    loginButton: {
       backgroundColor: '#3498db',
-      paddingVertical: 12,
-      borderRadius: 6,
+      height: 50,
+      borderRadius: 12,
+      justifyContent: 'center',
       alignItems: 'center',
-      width: '100%',
-      marginTop: 10,
+      marginTop: 16,
    },
    buttonText: {
-      color: '#ffffff',
+      color: '#fff',
       fontSize: 16,
-      fontWeight: 'bold',
+      fontWeight: '600',
    },
    logoutButton: {
       backgroundColor: '#e74c3c',
-      paddingVertical: 12,
-      borderRadius: 6,
+      height: 50,
+      borderRadius: 12,
+      justifyContent: 'center',
       alignItems: 'center',
-      width: '100%',
+      marginTop: 16,
+   },
+   // Alert Modal Styles
+   alertModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.4)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+   },
+   alertContainer: {
+      backgroundColor: '#fff',
+      borderRadius: 16,
+      padding: 24,
+      width: '90%',
+      alignItems: 'center',
+   },
+   alertTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: '#2c3e50',
+      marginVertical: 8,
+      textAlign: 'center',
+   },
+   alertMessage: {
+      fontSize: 16,
+      color: '#666',
+      marginBottom: 20,
+      textAlign: 'center',
+      lineHeight: 22,
+   },
+   alertButton: {
+      borderRadius: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 30,
       marginTop: 10,
    },
+   alertButtonText: {
+      color: 'white',
+      fontSize: 16,
+      fontWeight: '600',
+   },
+
+   // Updated Country Code Modal Styles
    modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
    },
    modalContainer: {
-      backgroundColor: '#ffffff',
-      padding: 20,
-      borderTopLeftRadius: 10,
-      borderTopRightRadius: 10,
-      maxHeight: '50%',
+      backgroundColor: '#fff',
+      height: '50%',
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+   },
+   modalHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      padding: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: '#eee',
+   },
+   searchContainer: {
+      paddingHorizontal: 16,
+      marginVertical: 12,
    },
    searchInput: {
-      height: 45,
-      borderColor: '#dcdcdc',
-      borderWidth: 1,
-      borderRadius: 6,
-      paddingHorizontal: 12,
-      backgroundColor: '#ffffff',
-      marginBottom: 10,
-      fontSize: 14,
-      color: '#34495e',
+      height: 50,
+      backgroundColor: '#f5f5f5',
+      borderRadius: 12,
+      paddingLeft: 44,
+      fontSize: 16,
+      color: '#333',
+   },
+   countryList: {
+      paddingBottom: 20,
+      flexGrow: 1,
+   },
+
+   searchIcon: {
+      position: 'absolute',
+      left: 28,
+      top: 15,
+      zIndex: 1,
    },
    countryCodeItem: {
-      paddingVertical: 10,
+      paddingVertical: 16,
+      paddingHorizontal: 24,
       borderBottomWidth: 1,
-      borderBottomColor: '#dcdcdc',
+      borderBottomColor: '#f5f5f5',
    },
    countryCodeText: {
-      fontSize: 14,
-      color: '#34495e',
+      fontSize: 16,
+      color: '#333',
    },
 });
 

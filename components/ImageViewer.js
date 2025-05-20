@@ -4,7 +4,7 @@ import {
     StyleSheet,
     Dimensions,
     Animated,
-    FlatList,
+    FlatList, StatusBar
 } from 'react-native';
 import {
     GestureHandlerRootView,
@@ -21,34 +21,41 @@ const ImageViewer = ({ route }) => {
     const flatListRef = useRef(null); // Reference to FlatList
 
     return (
-        <GestureHandlerRootView style={styles.container}>
-            <FlatList
-                ref={flatListRef}
-                data={images}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                initialScrollIndex={selectedIndex} // Start with the selected image
-                getItemLayout={(data, index) => ({
-                    length: width,
-                    offset: width * index,
-                    index,
-                })} // Optimize scrolling to the selected index
-                renderItem={({ item, index }) => (
-                    <Animated.View style={styles.imageContainer}>
-                        <Animated.Image
-                            source={{ uri: item }}
-                            style={[
-                                styles.image,
-                                { transform: [{ scale: scales.current[index] }] },
-                            ]}
-                            resizeMode="contain"
-                        />
-                    </Animated.View>
-                )}
-                keyExtractor={(_, index) => String(index)}
+        <>
+            <StatusBar
+                backgroundColor="#000000"
+                barStyle="dark-content"
+                translucent={Platform.OS === 'android'}
             />
-        </GestureHandlerRootView>
+            <GestureHandlerRootView style={styles.container}>
+                <FlatList
+                    ref={flatListRef}
+                    data={images}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    initialScrollIndex={selectedIndex} // Start with the selected image
+                    getItemLayout={(data, index) => ({
+                        length: width,
+                        offset: width * index,
+                        index,
+                    })} // Optimize scrolling to the selected index
+                    renderItem={({ item, index }) => (
+                        <Animated.View style={styles.imageContainer}>
+                            <Animated.Image
+                                source={{ uri: item }}
+                                style={[
+                                    styles.image,
+                                    { transform: [{ scale: scales.current[index] }] },
+                                ]}
+                                resizeMode="contain"
+                            />
+                        </Animated.View>
+                    )}
+                    keyExtractor={(_, index) => String(index)}
+                />
+            </GestureHandlerRootView>
+        </>
     );
 };
 

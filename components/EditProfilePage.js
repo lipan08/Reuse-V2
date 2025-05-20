@@ -11,9 +11,9 @@ import {
   Platform,
   ActivityIndicator,
   Dimensions,
+  Modal,
+  TouchableWithoutFeedback
 } from 'react-native';
-import { AlertNotificationRoot } from 'react-native-alert-notification';
-import { ALERT_TYPE, Dialog } from 'react-native-alert-notification';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,7 +23,6 @@ const scale = width / 375;
 const verticalScale = height / 812;
 const normalize = (size) => Math.round(scale * size);
 const normalizeVertical = (size) => Math.round(verticalScale * size);
-
 
 const EditProfilePage = () => {
   const [userData, setUserData] = useState({
@@ -41,7 +40,12 @@ const EditProfilePage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch profile data from the API
+  // Custom modal state
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState('success'); // 'success', 'warning', 'danger'
+  const [modalTitle, setModalTitle] = useState('');
+  const [modalMessage, setModalMessage] = useState('');
+
   useEffect(() => {
     const fetchProfileData = async () => {
       try {
@@ -57,14 +61,9 @@ const EditProfilePage = () => {
         });
 
         const responseData = await response.json();
-        console.log(responseData);
         if (response.ok) {
           const profile = responseData.data;
-
-          // Split the name into first and last name
           const [firstName, lastName] = profile.name.split(', ');
-
-          // Update the state with the fetched data
           setUserData({
             firstName: firstName || '',
             lastName: lastName || '',
@@ -77,18 +76,13 @@ const EditProfilePage = () => {
             profileImage: profile.images?.url || '',
             bio: profile.about_me || '',
           });
-
-          console.log('Profile image URL:', profile.images.url);
-        } else {
-          console.error('Failed to fetch profile data:', responseData.message);
         }
       } catch (error) {
-        console.error('Error fetching profile data:', error);
+        // handle error
       } finally {
         setIsLoading(false);
       }
     };
-
     fetchProfileData();
   }, []);
 
@@ -103,14 +97,8 @@ const EditProfilePage = () => {
       maxHeight: 300,
       quality: 1,
     };
-
     const result = await launchImageLibrary(options);
-
-    if (result.didCancel) {
-      console.log('User cancelled image picker');
-    } else if (result.errorMessage) {
-      console.error('ImagePicker Error:', result.errorMessage);
-    } else if (result.assets && result.assets.length > 0) {
+    if (result.assets && result.assets.length > 0) {
       const selectedImage = result.assets[0].uri;
       setUserData({ ...userData, profileImage: selectedImage });
     }
@@ -118,21 +106,16 @@ const EditProfilePage = () => {
 
   const handleSave = async () => {
     setIsSubmitting(true);
-
     try {
       const token = await AsyncStorage.getItem('authToken');
-      const userId = await AsyncStorage.getItem('userId'); // Assuming user ID is stored in AsyncStorage
+      const userId = await AsyncStorage.getItem('userId');
       const apiUrl = `${process.env.BASE_URL}/users/${userId}`;
       const formDataToSend = new FormData();
-
-      // Append standard fields
       Object.keys(userData).forEach((key) => {
         if (key !== 'profileImage') {
           formDataToSend.append(key, userData[key]);
         }
       });
-
-      // Append profile image if it exists
       if (userData.profileImage) {
         formDataToSend.append('profile_image', {
           uri: userData.profileImage,
@@ -140,7 +123,6 @@ const EditProfilePage = () => {
           name: `profile_${Date.now()}.jpg`,
         });
       }
-
       const response = await fetch(apiUrl, {
         method: 'POST',
         body: formDataToSend,
@@ -150,34 +132,25 @@ const EditProfilePage = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-
       const responseData = await response.json();
-
       if (response.ok) {
-        Dialog.show({
-          type: ALERT_TYPE.SUCCESS,
-          title: 'Success',
-          textBody: 'Profile updated successfully!',
-          button: 'close',
-        });
+        setModalType('success');
+        setModalTitle('Success');
+        setModalMessage('Profile updated successfully!');
+        setModalVisible(true);
         await AsyncStorage.setItem('userName', `${userData.firstName} ${userData.lastName}`);
         await AsyncStorage.setItem('userImage', userData.profileImage || '');
       } else {
-        Dialog.show({
-          type: ALERT_TYPE.WARNING,
-          title: 'Validation Error',
-          textBody: responseData.message || 'Something went wrong!',
-          button: 'close',
-        });
+        setModalType('warning');
+        setModalTitle('Validation Error');
+        setModalMessage(responseData.message || 'Something went wrong!');
+        setModalVisible(true);
       }
     } catch (error) {
-      console.error('API Error:', error);
-      Dialog.show({
-        type: ALERT_TYPE.DANGER,
-        title: 'Network Error',
-        textBody: 'Failed to connect to the server',
-        button: 'close',
-      });
+      setModalType('danger');
+      setModalTitle('Network Error');
+      setModalMessage('Failed to connect to the server');
+      setModalVisible(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -193,38 +166,68 @@ const EditProfilePage = () => {
   }
 
   return (
-    <AlertNotificationRoot>
-      <View style={styles.container}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-        >
-          <ScrollView contentContainerStyle={styles.scrollView}>
-            <Text style={styles.header}>Edit Your Profile</Text>
-
+    <View style={styles.outerContainer}>
+      {/* Custom Modal */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+          <View style={styles.customModalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={styles.customModalContainer}>
+                <Text style={[
+                  styles.customModalTitle,
+                  modalType === 'success' && { color: '#28a745' },
+                  modalType === 'warning' && { color: '#ffc107' },
+                  modalType === 'danger' && { color: '#dc3545' }
+                ]}>
+                  {modalTitle}
+                </Text>
+                <Text style={styles.customModalText}>{modalMessage}</Text>
+                <TouchableOpacity
+                  style={styles.customModalButton}
+                  onPress={() => setModalVisible(false)}
+                >
+                  <Text style={styles.customModalButtonText}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView contentContainerStyle={styles.scrollView}>
+          <View style={styles.card}>
+            <Text style={styles.header}>Edit Profile</Text>
             <TouchableOpacity style={styles.imagePicker} onPress={handleChooseImage}>
               {userData.profileImage ? (
                 <Image source={{ uri: userData.profileImage }} style={styles.profileImage} />
               ) : (
-                <Ionicons name="camera" size={40} color="#ccc" />
+                <Ionicons name="camera" size={40} color="#bbb" />
               )}
             </TouchableOpacity>
-
-            {/* Personal Details Section */}
             <View style={styles.section}>
               <Text style={styles.sectionHeader}>Personal Details</Text>
-              <View style={styles.inputGroup}>
+              <View style={styles.inputRow}>
                 <TextInput
-                  style={[styles.input, { marginRight: 10 }]}
+                  style={[styles.input, { marginRight: 8 }]}
                   placeholder="First Name"
                   value={userData.firstName}
                   onChangeText={(text) => handleChange('firstName', text)}
+                  placeholderTextColor="#aaa"
                 />
                 <TextInput
                   style={styles.input}
                   placeholder="Last Name"
                   value={userData.lastName}
                   onChangeText={(text) => handleChange('lastName', text)}
+                  placeholderTextColor="#aaa"
                 />
               </View>
               <TextInput
@@ -234,6 +237,7 @@ const EditProfilePage = () => {
                 onChangeText={(text) => handleChange('email', text)}
                 keyboardType="email-address"
                 autoCapitalize="none"
+                placeholderTextColor="#aaa"
               />
               <TextInput
                 style={styles.input}
@@ -241,10 +245,9 @@ const EditProfilePage = () => {
                 value={userData.phoneNumber}
                 onChangeText={(text) => handleChange('phoneNumber', text)}
                 keyboardType="phone-pad"
+                placeholderTextColor="#aaa"
               />
             </View>
-
-            {/* Business Details Section */}
             <View style={styles.section}>
               <Text style={styles.sectionHeader}>Business Details</Text>
               <TextInput
@@ -252,18 +255,21 @@ const EditProfilePage = () => {
                 placeholder="Business Name"
                 value={userData.businessName}
                 onChangeText={(text) => handleChange('businessName', text)}
+                placeholderTextColor="#aaa"
               />
               <TextInput
                 style={styles.input}
                 placeholder="Business Type"
                 value={userData.businessType}
                 onChangeText={(text) => handleChange('businessType', text)}
+                placeholderTextColor="#aaa"
               />
               <TextInput
                 style={styles.input}
                 placeholder="Business Address"
                 value={userData.businessAddress}
                 onChangeText={(text) => handleChange('businessAddress', text)}
+                placeholderTextColor="#aaa"
               />
               <TextInput
                 style={styles.input}
@@ -272,10 +278,9 @@ const EditProfilePage = () => {
                 onChangeText={(text) => handleChange('businessWebsite', text)}
                 keyboardType="url"
                 autoCapitalize="none"
+                placeholderTextColor="#aaa"
               />
             </View>
-
-            {/* Bio Section */}
             <View style={styles.section}>
               <Text style={styles.sectionHeader}>About You</Text>
               <TextInput
@@ -285,14 +290,17 @@ const EditProfilePage = () => {
                 onChangeText={(text) => handleChange('bio', text)}
                 multiline
                 numberOfLines={4}
+                placeholderTextColor="#aaa"
               />
             </View>
-          </ScrollView>
-
+          </View>
+        </ScrollView>
+        <View style={styles.fixedButtonContainer}>
           <TouchableOpacity
             style={styles.saveButton}
             onPress={handleSave}
             disabled={isSubmitting}
+            activeOpacity={0.8}
           >
             {isSubmitting ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -300,99 +308,181 @@ const EditProfilePage = () => {
               <Text style={styles.saveButtonText}>Save Changes</Text>
             )}
           </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </View>
-    </AlertNotificationRoot>
+        </View>
+      </KeyboardAvoidingView >
+    </View >
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  outerContainer: {
     flex: 1,
-    backgroundColor: '#f4f4f4',
+    backgroundColor: '#f0f2f5',
   },
   keyboardView: {
     flex: 1,
   },
   scrollView: {
-    paddingHorizontal: normalize(14),
-    paddingVertical: normalizeVertical(18),
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  card: {
+    width: '100%',
+    backgroundColor: '#fff',
+    padding: normalize(18),
+    elevation: 4,
   },
   header: {
-    fontSize: normalize(18),
+    fontSize: normalize(20),
     fontWeight: 'bold',
-    color: '#333',
+    color: '#222',
     textAlign: 'center',
-    marginBottom: normalizeVertical(12),
+    marginBottom: normalizeVertical(18),
+    letterSpacing: 0.5,
   },
   imagePicker: {
-    width: normalize(80),
-    height: normalize(80),
-    borderRadius: normalize(40),
+    width: normalize(90),
+    height: normalize(90),
+    borderRadius: normalize(45),
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'center',
-    marginBottom: normalizeVertical(14),
+    marginBottom: normalizeVertical(18),
     borderWidth: 2,
     borderColor: '#007BFF',
+    backgroundColor: '#f8f8f8',
     overflow: 'hidden',
-    backgroundColor: '#fff',
+    shadowColor: '#007BFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   profileImage: {
     width: '100%',
     height: '100%',
+    resizeMode: 'cover',
   },
   section: {
     marginBottom: normalizeVertical(18),
   },
   sectionHeader: {
-    fontSize: normalize(13),
+    fontSize: normalize(14),
     fontWeight: '600',
-    color: '#555',
-    marginBottom: normalizeVertical(7),
+    color: '#007BFF',
+    marginBottom: normalizeVertical(8),
+    letterSpacing: 0.2,
   },
-  inputGroup: {
+  inputRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: normalizeVertical(12),
   },
   input: {
     flex: 1,
-    height: normalizeVertical(40), // increased height
-    borderColor: '#ccc',
+    height: normalizeVertical(44),
+    borderColor: '#e0e0e0',
     borderWidth: 1,
-    borderRadius: normalize(8),    // slightly larger radius
-    marginBottom: normalizeVertical(14), // more vertical space
-    paddingHorizontal: normalize(14),    // more horizontal padding
-    fontSize: normalize(15),      // larger font size
-    backgroundColor: '#fff',
+    borderRadius: normalize(10),
+    marginBottom: normalizeVertical(12),
+    paddingHorizontal: normalize(14),
+    fontSize: normalize(15),
+    backgroundColor: '#fafbfc',
+    color: '#222',
   },
   textArea: {
-    height: normalizeVertical(90), // increased height for textarea
+    height: normalizeVertical(90),
     textAlignVertical: 'top',
+    marginBottom: normalize(60),
   },
   saveButton: {
     backgroundColor: '#007BFF',
-    padding: normalize(12),
-    borderRadius: normalize(6),
+    paddingVertical: normalizeVertical(14),
+    borderRadius: normalize(10),
     alignItems: 'center',
-    marginHorizontal: normalize(14),
-    marginBottom: normalizeVertical(14),
+    marginTop: normalizeVertical(10),
+    marginBottom: normalizeVertical(4),
+    shadowColor: '#007BFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
   },
   saveButtonText: {
     color: '#fff',
-    fontSize: normalize(14),
+    fontSize: normalize(16),
     fontWeight: 'bold',
+    letterSpacing: 0.3,
   },
   loaderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f4f4f4',
+    backgroundColor: '#f0f2f5',
   },
   loaderText: {
     marginTop: normalizeVertical(8),
-    fontSize: normalize(12),
+    fontSize: normalize(13),
     color: '#555',
+  },
+  // Custom Modal Styles
+  customModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  customModalContainer: {
+    width: '80%',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+  },
+  customModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  customModalText: {
+    fontSize: 16,
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  customModalButton: {
+    backgroundColor: '#007BFF',
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+  },
+  customModalButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  fixedButtonContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: Platform.OS === 'ios' ? 24 : 12,
+    backgroundColor: 'transparent',
+    paddingHorizontal: 18,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+  },
+  saveButton: {
+    backgroundColor: '#007BFF',
+    paddingVertical: normalizeVertical(14),
+    borderRadius: normalize(10),
+    alignItems: 'center',
+    shadowColor: '#007BFF',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });
 

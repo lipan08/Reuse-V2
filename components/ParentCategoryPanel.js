@@ -1,93 +1,119 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
-import FontAwesomeIcon from 'react-native-vector-icons/FontAwesome';
-import FontAwesomeIcon6 from 'react-native-vector-icons/FontAwesome6';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import React, { memo } from 'react';
+import { View, Text, TouchableHighlight, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const iconMapping = {
-  electronics: { type: 'MaterialCommunity', name: 'television' },
-  fashion: { type: 'MaterialCommunity', name: 'tshirt-crew' },
-  furniture: { type: 'MaterialCommunity', name: 'sofa' },
-  cars: { type: 'FontAwesome', name: 'car' },
-  bikes: { type: 'FontAwesome', name: 'motorcycle' },
-  mobiles: { type: 'FontAwesome', name: 'mobile' },
-  properties: { type: 'MaterialCommunity', name: 'home' },
-  commercial_vehicle_spare_part: { type: 'MaterialCommunity', name: 'truck' },
-  commercial_mechinery_spare_parts: { type: 'MaterialCommunity', name: 'tow-truck' },
-  boks_sports_hobbies: { type: 'MaterialCommunity', name: 'book-open-page-variant-outline' },
-  pets: { type: 'FontAwesomeIcon6', name: 'cat' },
-  services: { type: 'MaterialIcons', name: 'home-repair-service' },
-  electronics_appliances: { type: 'MaterialIcons', name: 'electrical-services' },
-  job: { type: 'MaterialCommunity', name: 'human-dolly' },
+  electronics: 'television',
+  fashion: 'tshirt-crew',
+  furniture: 'sofa',
+  cars: 'car',
+  bikes: 'motorbike',
+  mobiles: 'cellphone',
+  properties: 'home',
+  services: 'tools',
 };
 
-const ParentCategoryPanel = ({ categories, onSelectCategory, selectedCategory }) => {
-  const renderIcon = (iconConfig) => {
-    if (iconConfig.type === 'MaterialCommunity') {
-      return <MaterialCommunityIcon name={iconConfig.name} size={20} color="#4CAF50" style={styles.icon} />;
-    } else if (iconConfig.type === 'FontAwesome') {
-      return <FontAwesomeIcon name={iconConfig.name} size={20} color="#4CAF50" style={styles.icon} />;
-    } else if (iconConfig.type === 'FontAwesomeIcon6') {
-      return <FontAwesomeIcon6 name={iconConfig.name} size={20} color="#4CAF50" style={styles.icon} />;
-    } else if (iconConfig.type === 'MaterialIcons') {
-      return <MaterialIcons name={iconConfig.name} size={20} color="#4CAF50" style={styles.icon} />;
-    }
-    return null; // Default case if no icon type matches
+const ParentCategoryPanel = memo(({ categories, onSelectCategory, isLoading, isError, isRefreshing }) => {
+  const renderItem = ({ item }) => (
+    <TouchableHighlight
+      underlayColor="#F0F0F0"
+      style={styles.itemContainer}
+      onPress={() => onSelectCategory(item)}
+    >
+      <View style={styles.itemContent}>
+        <Icon
+          name={iconMapping[item.guard_name] || 'tag'}
+          size={24}
+          color="#4A90E2"
+          style={styles.icon}
+        />
+        <Text style={styles.itemText}>{item.name}</Text>
+        <Icon
+          name="chevron-right"
+          size={20}
+          color="#888888"
+          style={styles.arrow}
+        />
+      </View>
+    </TouchableHighlight>
+  );
+
+  const renderFooter = () => {
+    if (!isLoading || isRefreshing) return null;
+    return <ActivityIndicator size="large" color="#4A90E2" style={styles.loadingIndicator} />;
   };
 
   return (
-    <ScrollView style={styles.panelContainer}>
-      {categories.map((category) => {
-        const iconConfig = iconMapping[category.guard_name] || { type: 'FontAwesome', name: 'tag' }; // Default fallback icon
-        const isSelected = selectedCategory?.id === category.id; // Check if the category is selected
-        return (
-          <TouchableOpacity
-            key={category.id}
-            style={[styles.panelItem, isSelected && styles.selectedItem]} // Apply selected style
-            onPress={() => onSelectCategory(category)}
-          >
-            {renderIcon(iconConfig)}
-            <Text style={[styles.text, isSelected && styles.selectedText]}>{category.name}</Text>
-            <MaterialCommunityIcon name="chevron-right" size={20} color="#888" style={styles.arrowIcon} />
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
+    <FlatList
+      data={categories}
+      renderItem={renderItem}
+      keyExtractor={(item) => item.id.toString()}
+      contentContainerStyle={styles.listContent}
+      ListFooterComponent={renderFooter}
+      refreshing={isRefreshing}
+      onRefresh={() => { }} // implement if needed
+      ListEmptyComponent={
+        !isLoading && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              {isError ? 'Failed to load categories.' : 'No categories available'}
+            </Text>
+          </View>
+        )
+      }
+    />
   );
-};
+});
 
 const styles = StyleSheet.create({
-  panelContainer: {
-    width: '100%',
-    padding: 10,
-    backgroundColor: '#f1f1f1',
+  listContent: {
+    padding: 16,
   },
-  panelItem: {
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  loadingIndicator: {
+    marginVertical: 20,
+  },
+  itemContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  itemContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    backgroundColor: '#e1e1e1',
-    borderRadius: 5,
-    marginBottom: 8,
-  },
-  selectedItem: {
-    backgroundColor: '#2196F3', // Change to blue
+    padding: 16,
   },
   icon: {
-    marginRight: 8,
+    marginRight: 16,
   },
-  text: {
-    fontSize: 14,
-    color: '#333',
-    flexShrink: 1,
+  itemText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#333333',
+    fontWeight: '500',
   },
-  selectedText: {
-    color: '#fff', // Change text color for selected item
+  arrow: {
+    marginLeft: 8,
   },
-  arrowIcon: {
-    marginLeft: 'auto', // Push the arrow to the right
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    color: '#888888',
+    fontSize: 16,
   },
 });
 
