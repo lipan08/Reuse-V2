@@ -1,85 +1,127 @@
-import React, { useState, useEffect } from 'react';
+// CategoryMenu.js
+import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const scale = width / 375;
-const verticalScale = height / 812;
 const normalize = (size) => Math.round(scale * size);
-const normalizeVertical = (size) => Math.round(verticalScale * size);
-
 
 const CategoryMenu = ({ onCategorySelect, selectedCategory }) => {
-  const [selectedCategoryId, setSelectedCategoryId] = useState(selectedCategory);
   const categories = [
-    { id: '', name: 'Clear', icon: 'list', color: 'red' },
+    { id: null, name: 'All', icon: 'apps', color: '#007bff' },
     { id: '1', name: 'Cars', icon: 'car', color: '#6495ED' },
-    { id: '2', name: 'Properties', icon: 'home', color: '#4682B4' },
-    { id: '7', name: 'Mobile', icon: 'phone-portrait', color: '#32CD32' },
-    { id: '29', name: 'Electronics', icon: 'tv', color: '#FFD700' },
+    { id: '2', name: 'Homes', icon: 'home', color: '#4682B4' },
+    { id: '7', name: 'Phones', icon: 'phone-portrait', color: '#32CD32' },
+    { id: '29', name: 'Tech', icon: 'tv', color: '#FFD700' },
     { id: '24', name: 'Bikes', icon: 'bicycle', color: '#D2691E' },
     { id: '45', name: 'Furniture', icon: 'bed', color: '#8A2BE2' },
     { id: '51', name: 'Fashion', icon: 'shirt', color: '#FF69B4' },
-    { id: '55', name: 'Books', icon: 'book', color: '#FF6347' },
+    // { id: '55', name: 'Books', icon: 'book', color: '#FF6347' },
   ];
 
-  useEffect(() => {
-    setSelectedCategoryId(selectedCategory); // Update when selectedCategory prop changes
-  }, [selectedCategory]);
-
-  const handleCategorySelect = (id) => {
-    setSelectedCategoryId(id);
-    onCategorySelect(id);
+  const renderItem = ({ item }) => {
+    const isSelected = selectedCategory === item.id;
+    return (
+      < TouchableOpacity
+        style={
+          [
+            styles.categoryItem,
+            isSelected && styles.selectedItem
+          ]}
+        onPress={() => onCategorySelect(item.id)}
+      >
+        <View style={[
+          styles.iconContainer,
+          isSelected && styles.selectedIconContainer
+        ]}>
+          <Icon
+            name={item.icon}
+            size={normalize(22)}
+            color={isSelected ? '#007bff' : item.color}
+          />
+        </View>
+        <Text style={[
+          styles.categoryName,
+          isSelected && styles.selectedText
+        ]}>
+          {item.name}
+        </Text>
+      </TouchableOpacity >
+    );
   };
-
-  const renderCategory = ({ item }) => (
-    <TouchableOpacity
-      style={[
-        styles.categoryItem,
-        item.id === selectedCategoryId ? styles.selectedCategory : null
-      ]}
-      onPress={() => handleCategorySelect(item.id)}
-    >
-      <Icon name={item.icon} size={normalize(23)} color={item.color} />
-      <Text style={styles.categoryName}>{item.name}</Text>
-    </TouchableOpacity>
-  );
 
   return (
     <View style={styles.container}>
+      <Text style={styles.title}>Categories</Text>
       <FlatList
         data={categories}
-        renderItem={renderCategory}
-        keyExtractor={(item) => item.id}
-        horizontal={true}
-        showsHorizontalScrollIndicator={false}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id || 'all'}
+        numColumns={4}
+        columnWrapperStyle={styles.columnWrapper}
+        contentContainerStyle={styles.listContent}
+        scrollEnabled={false}
       />
     </View>
   );
 };
 
-
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    backgroundColor: '#fff',
+    // paddingVertical: normalize(16),
+    paddingHorizontal: normalize(4),
+  },
+  title: {
+    fontSize: normalize(14),
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: normalize(12),
     paddingHorizontal: normalize(8),
-    paddingVertical: normalizeVertical(10),
-    borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+  },
+  columnWrapper: {
+    justifyContent: 'space-between',
+    marginBottom: normalize(8),
+  },
+  listContent: {
+    paddingHorizontal: normalize(4),
   },
   categoryItem: {
-    marginRight: normalize(14),
+    width: width / 4.5,
     alignItems: 'center',
+    padding: normalize(10),
+    borderRadius: normalize(12),
+    backgroundColor: '#f8f9fa',
+  },
+  iconContainer: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    padding: normalize(8),
+    borderRadius: normalize(10),
+    marginBottom: normalize(6),
+  },
+  selectedIconContainer: {
+    backgroundColor: '#fff',
   },
   categoryName: {
-    marginTop: normalizeVertical(3),
-    fontSize: normalize(10),
-    color: '#000',
+    fontSize: normalize(12),
+    fontWeight: '500',
+    color: '#57606f',
+    textAlign: 'center',
   },
-  selectedCategory: {
-    borderBottomWidth: 2,
-    borderBottomColor: '#007bff',
+  selectedText: {
+    color: '#007bff',
+    fontWeight: '600',
+  },
+  selectedItem: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#007bff',
+    borderWidth: 1,
+    shadowColor: '#007bff',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
 });
 

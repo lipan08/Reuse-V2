@@ -354,22 +354,25 @@ const Home = () => {
             <Icon name="search" size={normalize(18)} color="#fff" />
           </TouchableOpacity>
         </View>
-
-        {showMenu && <CategoryMenu onCategorySelect={handleCategorySelect} selectedCategory={selectedCategory} />}
-
         {/* {isLoading && products.length === 0 && (
           <ActivityIndicator size="large" color="#007bff" style={styles.loaderTop} />
         )} */}
         <FlatList
           data={products}
           renderItem={renderProductItem}
-          keyExtractor={(item) => `${item.id}_${currentPage}`} // Unique key per page
+          keyExtractor={(item) => `${item.id}_${currentPage}`}
           numColumns={2}
           contentContainerStyle={styles.productList}
-          onEndReached={handleScrollEndReached}
-          onEndReachedThreshold={0.5} // More natural trigger point
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
+          ListHeaderComponent={
+            <>
+              {/* Banner Ad if needed */}
+              <CategoryMenu
+                onCategorySelect={handleCategorySelect}
+                selectedCategory={selectedCategory}
+              />
+              <Text style={styles.recommendedText}>Recommended</Text>
+            </>
+          }
           ListEmptyComponent={() => (
             !isLoading && <Text style={styles.noProductsText}>No products found</Text>
           )}
@@ -388,10 +391,12 @@ const Home = () => {
               onRefresh={handleRefresh}
             />
           }
-          removeClippedSubviews={true} // Optimize memory
-          initialNumToRender={10} // Optimize initial load
-          maxToRenderPerBatch={10} // Optimize scroll performance
-          windowSize={21} // Render window size
+          onEndReached={handleScrollEndReached}
+          onEndReachedThreshold={0.5}
+          removeClippedSubviews={true}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={21}
         />
         <BottomNavBar navigation={navigation} />
       </View>
@@ -459,7 +464,11 @@ const styles = StyleSheet.create({
     opacity: 0.95,
     zIndex: 1,
   },
-  productList: { paddingHorizontal: normalize(4), paddingBottom: normalizeVertical(48) },
+  productList: {
+    paddingHorizontal: normalize(4),
+    paddingBottom: normalizeVertical(48),
+    paddingTop: normalizeVertical(8),
+  },
   productItem: {
     flex: 1,
     margin: normalize(4),
@@ -507,6 +516,13 @@ const styles = StyleSheet.create({
     paddingVertical: normalizeVertical(3),
     paddingHorizontal: normalize(8),
     margin: normalize(3),
+  },
+  recommendedText: {
+    fontSize: normalize(14),
+    fontWeight: '600',
+    color: '#666',
+    marginVertical: normalizeVertical(12),
+    marginHorizontal: normalize(12),
   },
 });
 
