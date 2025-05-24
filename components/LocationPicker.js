@@ -171,7 +171,6 @@ const LocationPicker = ({ navigation }) => {
     );
 };
 
-// Keep the same styles as previous version
 const styles = StyleSheet.create({
     container: { flex: 1 },
     map: { flex: 1 },
